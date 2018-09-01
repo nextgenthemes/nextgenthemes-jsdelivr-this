@@ -24,13 +24,13 @@ function style_src( $src, $handle ) {
 };
 
 function src( $type, $src, $handle ) {
-	#$src = replace_core_script( $type, $src, $handle );
+	#$src = replace_core_asset( $type, $src, $handle );
 	$src = detect_by_hash( $type, $src, $handle );
 	$src = detect_plugin_asset( $type, $src, $handle );
 	return $src;
 }
 
-function replace_core_script( $type, $src, $handle ) {
+function replace_core_asset( $type, $src, $handle ) {
 
 	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
@@ -38,7 +38,6 @@ function replace_core_script( $type, $src, $handle ) {
 
 	$ext = ( 'script' === $type ) ? 'js' : 'css';
 
-	// WP core stuff
 	if ( contains( $src, '/wp-includes/' ) || contains( $src, '/wp-admin/' ) ) {
 		global $wp_version;
 		preg_match( "#(?<path>(wp-includes|wp-admin)/.*\.$ext)#", $src, $matches );
