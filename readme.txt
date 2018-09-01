@@ -1,4 +1,4 @@
-=== NGT jsDelivr This ===
+=== NGT jsDelivr CDN ===
 Contributors: nico23
 Tags: CDN, JS, JavaScript, jQuery, Performance, minimalistic, minimal
 Donate link: https://nextgenthemes.com/donate

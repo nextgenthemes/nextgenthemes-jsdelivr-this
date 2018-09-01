@@ -1,7 +1,7 @@
 <?php
 /**
  * @wordpress-plugin
- * Plugin Name:       NGT jsDelivr This
+ * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
  * Version:           0.9.0
