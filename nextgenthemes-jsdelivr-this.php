@@ -4,39 +4,36 @@
  * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
- * Version:           0.9.1
+ * Version:           0.9.2
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
  * License:           GPL-3.0
  * License URI:       http://www.gnu.org/licenses/gpl-3.0.html
  */
-
 namespace nextgenthemes\jsdelivr_this;
 
 add_filter( 'script_loader_src', __NAMESPACE__ . '\\script_src', 10, 2 );
 add_filter( 'style_loader_src', __NAMESPACE__ . '\\style_src', 10, 2 );
 
 function script_src( $src, $handle ) {
-	return src( 'script', $src, $handle );
+	return src( 'js', $src, $handle );
 };
 function style_src( $src, $handle ) {
-	return src( 'style', $src, $handle );
+	return src( 'css', $src, $handle );
 };
 
-function src( $type, $src, $handle ) {
-	#$src = replace_core_asset( $type, $src, $handle );
-	$src = detect_by_hash( $type, $src, $handle );
-	$src = detect_plugin_asset( $type, $src, $handle );
+function src( $ext, $src, $handle ) {
+	#$src = replace_core_asset( $ext, $src, $handle );
+	$src = detect_by_hash( $ext, $src, $handle );
+	$src = detect_plugin_asset( $ext, $src, $handle );
 	return $src;
 }
 
-function replace_core_asset( $type, $src, $handle ) {
+function replace_core_asset( $ext, $src, $handle ) {
 
 	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
 	}
-
-	$ext = ( 'script' === $type ) ? 'js' : 'css';
 
 	if ( contains( $src, '/wp-includes/' ) || contains( $src, '/wp-admin/' ) ) {
 		global $wp_version;
@@ -65,13 +62,11 @@ function get_plugin_dir_file( $plugin_slug ) {
 	return false;
 }
 
-function detect_plugin_asset( $type, $src, $handle ) {
+function detect_plugin_asset( $ext, $src, $handle ) {
 
 	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
 	}
-
-	$ext = ( 'script' === $type ) ? 'js' : 'css';
 
 	preg_match( "#/plugins/(?<plugin_slug>[^/]+)/(?<path>.*\.$ext)#", $src, $matches );
 
@@ -107,7 +102,7 @@ function detect_plugin_asset( $type, $src, $handle ) {
 	return $src;
 }
 
-function detect_by_hash( $type, $src, $handle ) {
+function detect_by_hash( $ext, $src, $handle ) {
 
 	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
@@ -134,7 +129,7 @@ function detect_by_hash( $type, $src, $handle ) {
 
 function get_jsdeliver_hash_api_data( $file_path ) {
 
-	$transient_name = "jsdelivr_this_api_call_$file_path";
+	$transient_name = "jsdelivr_this_hashapi_wp{$GLOBALS['wp_version']}_$file_path";
 	$result         = get_transient( $transient_name );
 
 	if ( false === $result ) {
@@ -142,7 +137,7 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 		$result       = array();
 		$file_content = file_get_contents( $file_path );
 
-		if( $file_content ) {
+		if ( $file_content ) {
 			$sha256 = hash( 'sha256', $file_content );
 			$data   = wp_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
 

@@ -28,5 +28,8 @@ It took me a lot of time to come up with this plugin and I had many iterations o
 
 == Changelog ==
 
+= 2018-09-02 0.9.2 =
+* Fix: Force the recheck of file hashes when WP gets updated to not end up with core assets.
+
 = 2018-09-01 0.9.1 =
 * Release
