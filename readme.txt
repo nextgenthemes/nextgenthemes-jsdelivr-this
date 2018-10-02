@@ -5,7 +5,7 @@ Donate link: https://nextgenthemes.com/donate
 Requires at least: 4.3.1
 Requires PHP: 5.6
 Tested up to: 4.9.8
-Stable tag: trunk
+Stable tag: 0.9.2
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -28,7 +28,7 @@ It took me a lot of time to come up with this plugin and I had many iterations o
 
 == Changelog ==
 
-= 2018-09-02 0.9.2 =
+= 2018-09-23 0.9.2 =
 * Fix: Force the recheck of file hashes when WP gets updated to not end up with core assets.
 
 = 2018-09-01 0.9.1 =
