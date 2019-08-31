@@ -4,13 +4,15 @@
  * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
- * Version:           0.9.2
+ * Version:           0.9.3
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
  * License:           GPL-3.0
  * License URI:       http://www.gnu.org/licenses/gpl-3.0.html
  */
-namespace nextgenthemes\jsdelivr_this;
+namespace Nextgenthemes\JSdelivsThis;
+
+const VERSION = '0.9.3';
 
 add_filter( 'script_loader_src', __NAMESPACE__ . '\\script_src', 10, 2 );
 add_filter( 'style_loader_src', __NAMESPACE__ . '\\style_src', 10, 2 );
@@ -81,10 +83,13 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 	$plugin_ver     = get_plugin_version( $plugin_dir_file );
 	$cdn_file       = "https://cdn.jsdelivr.net/wp/{$matches['plugin_slug']}/tags/$plugin_ver/{$matches['path']}";
 	$transient_name = "jsdelivr_this_{$cdn_file}_exists";
+	$file_exists    = get_transient( $transient_name );
 
-	if ( false === ( $file_exists = get_transient( $transient_name ) ) ) {
+	if ( false === $file_exists ) {
 
+		// phpcs:disable WordPress.PHP.NoSilencedErrors.Discouraged
 		$file_headers = @get_headers( $cdn_file );
+		// phpcs:enable WordPress.PHP.NoSilencedErrors.Discouraged
 
 		if ( 'HTTP/1.1 404 Not Found' === $file_headers[0] ) {
 			$file_exists = 'no';
@@ -92,7 +97,7 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 			$file_exists = 'yes';
 		}
 
-		set_transient( $transient_name, $file_exists, rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
+		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 	}
 
 	if ( 'yes' === $file_exists ) {
@@ -108,8 +113,7 @@ function detect_by_hash( $ext, $src, $handle ) {
 		return $src;
 	}
 
-	#dd(get_home_path());
-	$parsed_url = parse_url( $src );
+	$parsed_url = wp_parse_url( $src );
 	$file       = rtrim( ABSPATH, '/' ) . $parsed_url['path'];
 	$file_alt   = rtrim( dirname( ABSPATH ), '/' ) . $parsed_url['path'];
 
@@ -134,19 +138,22 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 
 	if ( false === $result ) {
 
+		// Local file, no need for wp_remote_get
+		// phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$result       = array();
 		$file_content = file_get_contents( $file_path );
+		// phpcs:enable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 		if ( $file_content ) {
 			$sha256 = hash( 'sha256', $file_content );
-			$data   = wp_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
+			$data   = wp_save_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
 
 			if ( ! is_wp_error( $data ) ) {
 				$result = (array) json_decode( wp_remote_retrieve_body( $data ), true );
 			}
 		}
 
-		set_transient( $transient_name, $result, rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
+		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 	}
 
 	return $result;
@@ -185,15 +192,15 @@ function get_plugin_version( $plugin_file ) {
  *     Author URI: Link to the author's web site
  *     Version: Must be set in the plugin for WordPress 2.3+
  *     Text Domain: Optional. Unique identifier, should be same as the one used in
- *    		load_plugin_textdomain()
+ *          load_plugin_textdomain()
  *     Domain Path: Optional. Only useful if the translations are located in a
- *    		folder above the plugin's base path. For example, if .mo files are
- *    		located in the locale folder then Domain Path will be "/locale/" and
- *    		must have the first slash. Defaults to the base folder the plugin is
- *    		located in.
+ *          folder above the plugin's base path. For example, if .mo files are
+ *          located in the locale folder then Domain Path will be "/locale/" and
+ *          must have the first slash. Defaults to the base folder the plugin is
+ *          located in.
  *     Network: Optional. Specify "Network: true" to require that a plugin is activated
- *    		across all sites in an installation. This will prevent a plugin from being
- *    		activated on a single site when Multisite is enabled.
+ *          across all sites in an installation. This will prevent a plugin from being
+ *          activated on a single site when Multisite is enabled.
  *      * / # Remove the space to close comment
  *
  * Some users have issues with opening large files and manipulating the contents
@@ -231,28 +238,34 @@ function get_plugin_version( $plugin_file ) {
 function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
 
 	$default_headers = array(
-		'Name' => 'Plugin Name',
-		'PluginURI' => 'Plugin URI',
-		'Version' => 'Version',
+		'Name'        => 'Plugin Name',
+		'PluginURI'   => 'Plugin URI',
+		'Version'     => 'Version',
 		'Description' => 'Description',
-		'Author' => 'Author',
-		'AuthorURI' => 'Author URI',
-		'TextDomain' => 'Text Domain',
-		'DomainPath' => 'Domain Path',
-		'Network' => 'Network',
+		'Author'      => 'Author',
+		'AuthorURI'   => 'Author URI',
+		'TextDomain'  => 'Text Domain',
+		'DomainPath'  => 'Domain Path',
+		'Network'     => 'Network',
 		// Site Wide Only is deprecated in favor of Network.
-		'_sitewide' => 'Site Wide Only',
+		'_sitewide'   => 'Site Wide Only',
 	);
 
 	$plugin_data = get_file_data( $plugin_file, $default_headers, 'plugin' );
 
 	// Site Wide Only is the old header for Network
 	if ( ! $plugin_data['Network'] && $plugin_data['_sitewide'] ) {
+		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
+		// phpcs:disable WordPress.WP.I18n.MissingArgDomain
 		/* translators: 1: Site Wide Only: true, 2: Network: true */
 		_deprecated_argument( __FUNCTION__, '3.0.0', sprintf( __( 'The %1$s plugin header is deprecated. Use %2$s instead.' ), '<code>Site Wide Only: true</code>', '<code>Network: true</code>' ) );
+		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
+		// phpcs:enable WordPress.WP.I18n.MissingArgDomain
 		$plugin_data['Network'] = $plugin_data['_sitewide'];
 	}
+	// phpcs:disable WordPress.PHP.StrictComparisons.LooseComparison
 	$plugin_data['Network'] = ( 'true' == strtolower( $plugin_data['Network'] ) );
+	// phpcs:enable WordPress.PHP.StrictComparisons.LooseComparison
 	unset( $plugin_data['_sitewide'] );
 
 	// If no text domain is defined fall back to the plugin slug.
