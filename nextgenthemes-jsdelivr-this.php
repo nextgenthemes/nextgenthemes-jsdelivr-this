@@ -4,7 +4,7 @@
  * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
- * Version:           0.9.3
+ * Version:           0.9.4
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
  * License:           GPL-3.0
@@ -12,7 +12,7 @@
  */
 namespace Nextgenthemes\JSdelivsThis;
 
-const VERSION = '0.9.3';
+const VERSION = '0.9.4';
 
 add_filter( 'script_loader_src', __NAMESPACE__ . '\\script_src', 10, 2 );
 add_filter( 'style_loader_src', __NAMESPACE__ . '\\style_src', 10, 2 );
@@ -146,7 +146,7 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 
 		if ( $file_content ) {
 			$sha256 = hash( 'sha256', $file_content );
-			$data   = wp_save_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
+			$data   = wp_safe_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
 
 			if ( ! is_wp_error( $data ) ) {
 				$result = (array) json_decode( wp_remote_retrieve_body( $data ), true );

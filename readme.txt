@@ -5,7 +5,7 @@ Donate link: https://nextgenthemes.com/donate
 Requires at least: 4.3.1
 Requires PHP: 5.6
 Tested up to: 5.2.2
-Stable tag: 0.9.3
+Stable tag: 0.9.4
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -13,7 +13,7 @@ Free CDN for WordPress Core and Plugin assets.
 
 == Changelog ==
 
-= 2019-08-31 0.9.3 =
+= 2019-08-31 0.9.4 =
 * Coding standards, some minor things.
 
 = 2018-09-23 0.9.2 =
