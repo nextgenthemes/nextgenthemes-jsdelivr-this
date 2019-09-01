@@ -10,7 +10,7 @@
  * License:           GPL-3.0
  * License URI:       http://www.gnu.org/licenses/gpl-3.0.html
  */
-namespace Nextgenthemes\JSdelivsThis;
+namespace Nextgenthemes\JSdelivrThis;
 
 const VERSION = '0.9.6';
 
@@ -25,24 +25,8 @@ function style_src( $src, $handle ) {
 };
 
 function src( $ext, $src, $handle ) {
-	#$src = replace_core_asset( $ext, $src, $handle );
 	$src = detect_by_hash( $ext, $src, $handle );
 	$src = detect_plugin_asset( $ext, $src, $handle );
-	return $src;
-}
-
-function replace_core_asset( $ext, $src, $handle ) {
-
-	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
-		return $src;
-	}
-
-	if ( contains( $src, '/wp-includes/' ) || contains( $src, '/wp-admin/' ) ) {
-		global $wp_version;
-		preg_match( "#(?<path>(wp-includes|wp-admin)/.*\.$ext)#", $src, $matches );
-		$src = "https://cdn.jsdelivr.net/gh/WordPress/WordPress@$wp_version/{$matches['path']}";
-	}
-
 	return $src;
 }
 
@@ -87,9 +71,8 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 
 	if ( false === $file_exists ) {
 
-		// phpcs:disable WordPress.PHP.NoSilencedErrors.Discouraged
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$file_headers = @get_headers( $cdn_file );
-		// phpcs:enable WordPress.PHP.NoSilencedErrors.Discouraged
 
 		if ( 'HTTP/1.1 404 Not Found' === $file_headers[0] ) {
 			$file_exists = 'no';
@@ -159,16 +142,12 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 	return $result;
 }
 
-// https://stackoverflow.com/a/7168986.
-function starts_with( $haystack, $needle ) {
-
-	return $haystack[0] === $needle[0]
-		? strncmp( $haystack, $needle, strlen( $needle ) ) === 0
-		: false;
-}
-
 function contains( $haystack, $needle ) {
 	return strpos( $haystack, $needle ) !== false;
+}
+
+function starts_with( $haystack, $needle ) {
+	return $haystack[0] === $needle[0] ? strncmp( $haystack, $needle, strlen( $needle ) ) === 0 : false;
 }
 
 function get_plugin_version( $plugin_file ) {
