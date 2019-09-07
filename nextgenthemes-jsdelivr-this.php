@@ -26,15 +26,8 @@ function filter_style_loader_src( $src, $handle ) {
 
 function maybe_replace_src( $ext, $src, $handle ) {
 
-	static $ran_already = false;
-
-	// We only run this once per page generation to avoid a bunch of API calls to slow the site down
-	if ( ! $ran_already ) {
-		$src = detect_by_hash( $ext, $src, $handle );
-		$src = detect_plugin_asset( $ext, $src, $handle );
-
-		$ran_already = true;
-	}
+	$src = detect_by_hash( $ext, $src, $handle );
+	$src = detect_plugin_asset( $ext, $src, $handle );
 
 	return $src;
 }
@@ -73,12 +66,13 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 		return $src;
 	}
 
-	$plugin_ver     = get_plugin_version( $plugin_dir_file );
-	$cdn_file       = "https://cdn.jsdelivr.net/wp/{$matches['plugin_slug']}/tags/$plugin_ver/{$matches['path']}";
-	$transient_name = "jsdelivr_this_{$cdn_file}_exists";
-	$file_exists    = get_transient( $transient_name );
+	static $ran_already = false;
+	$plugin_ver         = get_plugin_version( $plugin_dir_file );
+	$cdn_file           = "https://cdn.jsdelivr.net/wp/{$matches['plugin_slug']}/tags/$plugin_ver/{$matches['path']}";
+	$transient_name     = "jsdelivr_this_{$cdn_file}_exists";
+	$file_exists        = get_transient( $transient_name );
 
-	if ( false === $file_exists ) {
+	if ( false === $file_exists && ! $ran_already ) {
 
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$file_headers = @get_headers( $cdn_file );
@@ -91,6 +85,7 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
+		$ran_already = true;
 	}
 
 	if ( 'yes' === $file_exists ) {
@@ -98,6 +93,40 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 	}
 
 	return $src;
+}
+
+function get_jsdeliver_hash_api_data( $file_path ) {
+
+	static $ran_already = false;
+	$transient_name     = "jsdelivr_this_hashapi_wp{$GLOBALS['wp_version']}_$file_path";
+	$result             = get_transient( $transient_name );
+
+	if ( false === $result && ! $ran_already ) {
+
+		// Local file, no need for wp_remote_get
+		$result       = array();
+		$file_content = readfile( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile
+
+		if ( $file_content ) {
+			$sha256 = hash( 'sha256', $file_content );
+			$data   = wp_safe_remote_get(
+				"https://data.jsdelivr.com/v1/lookup/hash/$sha256",
+				[
+					'user-agent' => 'https://nextgenthemes.com/plugins/jsdelivr-this',
+					'timeout'    => 2,
+				]
+			);
+
+			if ( ! is_wp_error( $data ) ) {
+				$result = (object) json_decode( wp_remote_retrieve_body( $data ) );
+			}
+		}
+
+		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
+		$ran_already = true;
+	}
+
+	return $result;
 }
 
 function detect_by_hash( $ext, $src, $handle ) {
@@ -117,39 +146,18 @@ function detect_by_hash( $ext, $src, $handle ) {
 		$data = get_jsdeliver_hash_api_data( $file_alt );
 	};
 
-	if ( isset( $data['type'] ) && 'gh' === $data['type'] ) {
-		$src = "https://cdn.jsdelivr.net/{$data['type']}/{$data['name']}@{$data['version']}{$data['file']}";
+	if ( ! empty( $data->type ) && 'gh' === $data->type &&
+		! empty( $data->name ) &&
+		! empty( $data->version ) &&
+		! empty( $data->file )
+	) {
+		$src = sprintf(
+			'https://cdn.jsdelivr.net/%s/%s@%s',
+			$data->type, $data->name, $data->version . $data->file
+		);
 	}
 
 	return $src;
-}
-
-function get_jsdeliver_hash_api_data( $file_path ) {
-
-	$transient_name = "jsdelivr_this_hashapi_wp{$GLOBALS['wp_version']}_$file_path";
-	$result         = get_transient( $transient_name );
-
-	if ( false === $result ) {
-
-		// Local file, no need for wp_remote_get
-		// phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$result       = array();
-		$file_content = file_get_contents( $file_path );
-		// phpcs:enable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-
-		if ( $file_content ) {
-			$sha256 = hash( 'sha256', $file_content );
-			$data   = wp_safe_remote_get( "https://data.jsdelivr.com/v1/lookup/hash/$sha256", array() );
-
-			if ( ! is_wp_error( $data ) ) {
-				$result = (array) json_decode( wp_remote_retrieve_body( $data ), true );
-			}
-		}
-
-		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
-	}
-
-	return $result;
 }
 
 function contains( $haystack, $needle ) {
