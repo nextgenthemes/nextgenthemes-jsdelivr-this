@@ -4,7 +4,7 @@
  * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
- * Version:           0.9.7
+ * Version:           1.0.0
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
  * License:           GPL-3.0
@@ -12,21 +12,30 @@
  */
 namespace Nextgenthemes\JSdelivrThis;
 
-const VERSION = '0.9.7';
+const VERSION = '1.0.0';
 
-add_filter( 'script_loader_src', __NAMESPACE__ . '\\script_src', 10, 2 );
-add_filter( 'style_loader_src', __NAMESPACE__ . '\\style_src', 10, 2 );
+add_filter( 'script_loader_src', __NAMESPACE__ . '\\filter_script_loader_src', 10, 2 );
+add_filter( 'style_loader_src', __NAMESPACE__ . '\\filter_style_loader_src', 10, 2 );
 
-function script_src( $src, $handle ) {
-	return src( 'js', $src, $handle );
+function filter_script_loader_src( $src, $handle ) {
+	return maybe_replace_src( 'js', $src, $handle );
 };
-function style_src( $src, $handle ) {
-	return src( 'css', $src, $handle );
+function filter_style_loader_src( $src, $handle ) {
+	return maybe_replace_src( 'css', $src, $handle );
 };
 
-function src( $ext, $src, $handle ) {
-	$src = detect_by_hash( $ext, $src, $handle );
-	$src = detect_plugin_asset( $ext, $src, $handle );
+function maybe_replace_src( $ext, $src, $handle ) {
+
+	static $ran_already = false;
+
+	// We only run this once per page generation to avoid a bunch of API calls to slow the site down
+	if ( ! $ran_already ) {
+		$src = detect_by_hash( $ext, $src, $handle );
+		$src = detect_plugin_asset( $ext, $src, $handle );
+
+		$ran_already = true;
+	}
+
 	return $src;
 }
 
@@ -80,6 +89,7 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 			$file_exists = 'yes';
 		}
 
+		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 	}
 
