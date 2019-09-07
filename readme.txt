@@ -13,6 +13,9 @@ Free CDN for WordPress Core and Plugin assets.
 
 == Changelog ==
 
+= 2019-09-07 1.0.0 =
+* Run only once per page-load, better function names and some useful comments.
+
 = 2019-08-31 0.9.4 =
 * Coding standards, some minor things.
 
