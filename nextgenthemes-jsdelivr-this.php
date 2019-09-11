@@ -86,7 +86,7 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 		$ran_already = true;
-		\Nextenthemes\Common\logfile( $file_exists );
+		logfile( $file_exists, __FILE__ );
 	}
 
 	if ( 'yes' === $file_exists ) {
@@ -125,7 +125,7 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 		$ran_already = true;
-		\Nextenthemes\Common\logfile( $result );
+		logfile( $result, __FILE__ );
 	}
 
 	return $result;
