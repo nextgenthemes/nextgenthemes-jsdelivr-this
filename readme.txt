@@ -14,7 +14,9 @@ Free CDN for WordPress Core and Plugin assets.
 == Changelog ==
 
 = 2019-09-07 1.0.0 =
-* Run only once per page-load, better function names and some useful comments.
+* Run only once per page-load.
+* Better function names and some useful comments.
+* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referer sends your site URL (I really do not like that)
 
 = 2019-08-31 0.9.4 =
 * Coding standards, some minor things.

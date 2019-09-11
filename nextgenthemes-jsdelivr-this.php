@@ -86,6 +86,7 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 		$ran_already = true;
+		\Nextenthemes\Common\logfile( $file_exists );
 	}
 
 	if ( 'yes' === $file_exists ) {
@@ -103,9 +104,8 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 
 	if ( false === $result && ! $ran_already ) {
 
-		// Local file, no need for wp_remote_get
 		$result       = array();
-		$file_content = readfile( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_readfile
+		$file_content = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 		if ( $file_content ) {
 			$sha256 = hash( 'sha256', $file_content );
@@ -122,8 +122,10 @@ function get_jsdeliver_hash_api_data( $file_path ) {
 			}
 		}
 
+		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 		$ran_already = true;
+		\Nextenthemes\Common\logfile( $result );
 	}
 
 	return $result;
@@ -146,14 +148,16 @@ function detect_by_hash( $ext, $src, $handle ) {
 		$data = get_jsdeliver_hash_api_data( $file_alt );
 	};
 
-	if ( ! empty( $data->type ) && 'gh' === $data->type &&
+	if ( ! empty( $data->type ) &&
 		! empty( $data->name ) &&
 		! empty( $data->version ) &&
 		! empty( $data->file )
 	) {
 		$src = sprintf(
 			'https://cdn.jsdelivr.net/%s/%s@%s',
-			$data->type, $data->name, $data->version . $data->file
+			$data->type,
+			$data->name,
+			$data->version . $data->file
 		);
 	}
 
