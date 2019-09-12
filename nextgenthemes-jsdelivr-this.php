@@ -74,8 +74,9 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 
 	if ( false === $file_exists && ! $ran_already ) {
 
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		$file_headers = @get_headers( $cdn_file );
+		$stream_defaults = stream_context_set_default( [ 'http' =>  [ 'timeout' => 2 ] ] );
+ 		$file_headers    = @get_headers( $cdn_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		stream_context_set_default( $stream_defaults );
 
 		if ( 'HTTP/1.1 404 Not Found' === $file_headers[0] ) {
 			$file_exists = 'no';
