@@ -4,35 +4,47 @@
  * Plugin Name:       NGT jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Makes your site load all WP Core and plugin assets from jsDelivr CDN
- * Version:           1.0.0
+ * Version:           1.1.0
+ * Requres PHP:       7.4
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
  * License:           GPL-3.0
  * License URI:       http://www.gnu.org/licenses/gpl-3.0.html
  */
-namespace Nextgenthemes\JSdelivrThis;
+namespace Nextgenthemes\jsDelivrThis;
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 add_filter( 'script_loader_src', __NAMESPACE__ . '\\filter_script_loader_src', 10, 2 );
 add_filter( 'style_loader_src', __NAMESPACE__ . '\\filter_style_loader_src', 10, 2 );
 
-function filter_script_loader_src( $src, $handle ) {
-	return maybe_replace_src( 'js', $src, $handle );
-};
-function filter_style_loader_src( $src, $handle ) {
-	return maybe_replace_src( 'css', $src, $handle );
-};
+add_filter(
+	'plugin_action_links_' . plugin_basename( __FILE__ ),
+	function ( array $links ) {
 
-function maybe_replace_src( $ext, $src, $handle ) {
+		$links['donate'] = sprintf(
+			'<a href="https://nextgenthemes.com/donate/"><strong style="display: inline;">%s</strong></a>',
+			esc_html__( 'Donate', 'jsdelivr-this' )
+		);
 
-	$src = detect_by_hash( $ext, $src, $handle );
-	$src = detect_plugin_asset( $ext, $src, $handle );
+		return $links;
+	}
+);
 
+function filter_script_loader_src( string $src, string $handle ): string {
+	return maybe_replace_src( 'script', $src, $handle );
+}
+function filter_style_loader_src( string $src, string $handle ): string {
+	return maybe_replace_src( 'style', $src, $handle );
+}
+
+function maybe_replace_src( string $type, string $src, string $handle ): string {
+	$src = detect_by_hash( $type, $src, $handle );
+	$src = detect_plugin_asset( $type, $src, $handle );
 	return $src;
 }
 
-function get_plugin_dir_file( $plugin_slug ) {
+function get_plugin_dir_file( string $plugin_slug ): ?string {
 
 	$active_plugins = get_option( 'active_plugins' );
 
@@ -42,19 +54,20 @@ function get_plugin_dir_file( $plugin_slug ) {
 
 	foreach ( $active_plugins as $key => $value ) {
 
-		if ( starts_with( $value, $plugin_slug ) ) {
+		if ( str_starts_with( $value, $plugin_slug ) ) {
 			return $value;
 		}
 	}
 
-	return false;
+	return null;
 }
 
-function detect_plugin_asset( $ext, $src, $handle ) {
+function detect_plugin_asset( string $type, string $src, string $handle ): string {
 
-	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
+	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
 	}
+	$ext = ( 'style' === $type ) ? 'css' : 'js';
 
 	preg_match( "#/plugins/(?<plugin_slug>[^/]+)/(?<path>.*\.$ext)#", $src, $matches );
 
@@ -69,219 +82,189 @@ function detect_plugin_asset( $ext, $src, $handle ) {
 	static $ran_already = false;
 	$plugin_ver         = get_plugin_version( $plugin_dir_file );
 	$cdn_file           = "https://cdn.jsdelivr.net/wp/{$matches['plugin_slug']}/tags/$plugin_ver/{$matches['path']}";
-	$transient_name     = "jsdelivr_this_{$cdn_file}_exists";
-	$file_exists        = get_transient( $transient_name );
+	$transient_name     = 'ngt_jsdelivr_this_' . $cdn_file;
+	$data               = get_transient( $transient_name );
 
-	if ( false === $file_exists && ! $ran_already ) {
+	if ( false === $data && ! $ran_already ) {
 
-		$stream_defaults = stream_context_set_default( [ 'http' =>  [ 'timeout' => 2 ] ] );
- 		$file_headers    = @get_headers( $cdn_file ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		stream_context_set_default( $stream_defaults );
+		$opts['http']['timeout'] = 2;
 
-		if ( 'HTTP/1.1 404 Not Found' === $file_headers[0] ) {
-			$file_exists = 'no';
-		} else {
-			$file_exists = 'yes';
+		$ran_already  = true;
+		$data         = new \stdClass();
+		$file_headers = ngt_headers( $cdn_file );
+
+		if ( ! empty( $file_headers[0] ) && 'HTTP/1.1 200 OK' === $file_headers[0] ) {
+			$data->file_exists = true;
+			$path              = path_from_url( $src );
+
+			if ( $path ) {
+				$data->integrity = gen_integrity( file_get_contents( $path ) );
+			}
 		}
 
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
-		set_transient( $transient_name, $file_exists, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
-		$ran_already = true;
+		set_transient( $transient_name, $data, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 	}
 
-	if ( 'yes' === $file_exists ) {
+	if ( ! empty( $data->file_exists ) && ! empty( $data->integrity ) ) {
 		$src = $cdn_file;
+		add_integrity_to_asset( $type, $handle, $data );
 	}
 
 	return $src;
 }
 
-function get_jsdeliver_hash_api_data( $file_path ) {
+/**
+ * Retrieves headers for the given URL.
+ *
+ * @param string $url The URL for which to retrieve headers.
+ * @return array|false Returns an array of headers on success or FALSE on failure.
+ */
+function ngt_headers( string $url ) {
+
+	$opts['http']['timeout'] = 2;
+
+	$context = stream_context_create( $opts );
+	return @get_headers( $url, 0, $context ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+}
+
+function add_integrity_to_asset( string $type, string $handle, object $data ): void {
+
+	add_filter(
+		$type . '_loader_tag',
+		function ( $html, $fn_handle ) use ( $type, $handle, $data ) {
+
+			$tag      = ( 'style' === $type ) ? 'link' : 'script';
+			$tag_open = sprintf( '<%s ', tag_escape( $tag ) );
+
+			if ( $fn_handle === $handle &&
+				(
+					( 'style' === $type && str_contains( $html, 'href=' ) ) ||
+					( 'script' === $type && str_contains( $html, 'src=' ) )
+				)
+			) {
+				$html = str_replace(
+					$tag_open,
+					sprintf( $tag_open . "integrity='%s' crossorigin='anonymous' ", esc_attr( $data->integrity ) ),
+					$html
+				);
+			}
+			return $html;
+		},
+		10,
+		2
+	);
+}
+
+function get_jsdelivr_hash_api_data( string $file_path, string $handle, string $src ): ?object {
 
 	static $ran_already = false;
-	$transient_name     = "jsdelivr_this_hashapi_wp{$GLOBALS['wp_version']}_$file_path";
+	$transient_name     = "ngt_jsdelivr_this_{$handle}_{$src}_wp{$GLOBALS['wp_version']}";
 	$result             = get_transient( $transient_name );
 
 	if ( false === $result && ! $ran_already ) {
 
-		$result       = array();
-		$file_content = file_get_contents( $file_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$ran_already  = true;
+		$result       = new \stdClass();
+		$file_content = file_get_contents( $file_path );
 
 		if ( $file_content ) {
 			$sha256 = hash( 'sha256', $file_content );
 			$data   = wp_safe_remote_get(
 				"https://data.jsdelivr.com/v1/lookup/hash/$sha256",
-				[
+				array(
 					'user-agent' => 'https://nextgenthemes.com/plugins/jsdelivr-this',
 					'timeout'    => 2,
-				]
+				)
 			);
 
 			if ( ! is_wp_error( $data ) ) {
-				$result = (object) json_decode( wp_remote_retrieve_body( $data ) );
+				$result            = (object) json_decode( wp_remote_retrieve_body( $data ) );
+				$result->integrity = gen_integrity( $file_content );
 			}
 		}
 
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
 		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
-		$ran_already = true;
+	}
+
+	if ( false === $result ) {
+		$result = null;
 	}
 
 	return $result;
 }
 
-function detect_by_hash( $ext, $src, $handle ) {
+function detect_by_hash( string $type, string $src, string $handle ): string {
 
-	if ( starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
+	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return $src;
 	}
 
-	$parsed_url = wp_parse_url( $src );
-	$file       = rtrim( ABSPATH, '/' ) . $parsed_url['path'];
-	$file_alt   = rtrim( dirname( ABSPATH ), '/' ) . $parsed_url['path'];
+	$path = path_from_url( $src );
 
-	if ( is_file( $file ) ) {
-		$data = get_jsdeliver_hash_api_data( $file );
-	};
-	if ( is_file( $file_alt ) ) {
-		$data = get_jsdeliver_hash_api_data( $file_alt );
-	};
+	if ( $path ) {
+		$data = get_jsdelivr_hash_api_data( $path, $handle, $src );
+	}
 
-	if ( ! empty( $data->type ) &&
-		! empty( $data->name ) &&
-		! empty( $data->version ) &&
-		! empty( $data->file )
-	) {
+	$ver         = get_url_arg( $src, 'ver' );
+	$wp_gh_asset = ( ! empty( $data->type ) && 'gh' === $data->type && 'WordPress/WordPress' === $data->name );
+	$ver_not_wp  = ( ! empty( $data->type ) && $ver && $GLOBALS['wp_version'] !== $ver );
+
+	if ( $wp_gh_asset || $ver_not_wp ) {
 		$src = sprintf(
 			'https://cdn.jsdelivr.net/%s/%s@%s',
 			$data->type,
 			$data->name,
 			$data->version . $data->file
 		);
+		add_integrity_to_asset( $type, $handle, $data );
 	}
 
 	return $src;
 }
 
-function contains( $haystack, $needle ) {
-	return strpos( $haystack, $needle ) !== false;
-}
-
-function starts_with( $haystack, $needle ) {
-	return $haystack[0] === $needle[0] ? strncmp( $haystack, $needle, strlen( $needle ) ) === 0 : false;
-}
-
-function get_plugin_version( $plugin_file ) {
-	$plugin_data = get_plugin_data( WP_PLUGIN_DIR . "/$plugin_file", false, false );
-	return $plugin_data['Version'];
-}
-
 /**
- * Parses the plugin contents to retrieve plugin's metadata.
+ * Retrieves the value of a specific query argument from the given URL.
  *
- * The metadata of the plugin's data searches for the following in the plugin's
- * header. All plugin data must be on its own line. For plugin description, it
- * must not have any newlines or only parts of the description will be displayed
- * and the same goes for the plugin data. The below is formatted for printing.
- *
- *     /*
- *     Plugin Name: Name of Plugin
- *     Plugin URI: Link to plugin information
- *     Description: Plugin Description
- *     Author: Plugin author's name
- *     Author URI: Link to the author's web site
- *     Version: Must be set in the plugin for WordPress 2.3+
- *     Text Domain: Optional. Unique identifier, should be same as the one used in
- *          load_plugin_textdomain()
- *     Domain Path: Optional. Only useful if the translations are located in a
- *          folder above the plugin's base path. For example, if .mo files are
- *          located in the locale folder then Domain Path will be "/locale/" and
- *          must have the first slash. Defaults to the base folder the plugin is
- *          located in.
- *     Network: Optional. Specify "Network: true" to require that a plugin is activated
- *          across all sites in an installation. This will prevent a plugin from being
- *          activated on a single site when Multisite is enabled.
- *      * / # Remove the space to close comment
- *
- * Some users have issues with opening large files and manipulating the contents
- * for want is usually the first 1kiB or 2kiB. This function stops pulling in
- * the plugin contents when it has all of the required plugin data.
- *
- * The first 8kiB of the file will be pulled in and if the plugin data is not
- * within that first 8kiB, then the plugin author should correct their plugin
- * and move the plugin data headers to the top.
- *
- * The plugin file is assumed to have permissions to allow for scripts to read
- * the file. This is not checked however and the file is only opened for
- * reading.
- *
- * @since 1.5.0
- *
- * @param string $plugin_file Path to the main plugin file.
- * @param bool   $markup      Optional. If the returned data should have HTML markup applied.
- *                            Default true.
- * @param bool   $translate   Optional. If the returned data should be translated. Default true.
- * @return array {
- *     Plugin data. Values will be empty if not supplied by the plugin.
- *
- *     @type string $Name        Name of the plugin. Should be unique.
- *     @type string $Title       Title of the plugin and link to the plugin's site (if set).
- *     @type string $Description Plugin description.
- *     @type string $Author      Author's name.
- *     @type string $AuthorURI   Author's website address (if set).
- *     @type string $Version     Plugin version.
- *     @type string $TextDomain  Plugin textdomain.
- *     @type string $DomainPath  Plugins relative directory path to .mo files.
- *     @type bool   $Network     Whether the plugin can only be activated network-wide.
- * }
+ * @param string $url The URL containing the query parameters.
+ * @param string $arg The name of the query argument to retrieve.
+ * @return string|null The value of the specified query argument, or null if it is not found.
  */
-function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
+function get_url_arg( string $url, string $arg ): ?string {
 
-	$default_headers = array(
-		'Name'        => 'Plugin Name',
-		'PluginURI'   => 'Plugin URI',
-		'Version'     => 'Version',
-		'Description' => 'Description',
-		'Author'      => 'Author',
-		'AuthorURI'   => 'Author URI',
-		'TextDomain'  => 'Text Domain',
-		'DomainPath'  => 'Domain Path',
-		'Network'     => 'Network',
-		// Site Wide Only is deprecated in favor of Network.
-		'_sitewide'   => 'Site Wide Only',
-	);
+	$query_string = parse_url( $url, PHP_URL_QUERY );
 
-	$plugin_data = get_file_data( $plugin_file, $default_headers, 'plugin' );
-
-	// Site Wide Only is the old header for Network
-	if ( ! $plugin_data['Network'] && $plugin_data['_sitewide'] ) {
-		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
-		// phpcs:disable WordPress.WP.I18n.MissingArgDomain
-		/* translators: 1: Site Wide Only: true, 2: Network: true */
-		_deprecated_argument( __FUNCTION__, '3.0.0', sprintf( __( 'The %1$s plugin header is deprecated. Use %2$s instead.' ), '<code>Site Wide Only: true</code>', '<code>Network: true</code>' ) );
-		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
-		// phpcs:enable WordPress.WP.I18n.MissingArgDomain
-		$plugin_data['Network'] = $plugin_data['_sitewide'];
-	}
-	// phpcs:disable WordPress.PHP.StrictComparisons.LooseComparison
-	$plugin_data['Network'] = ( 'true' == strtolower( $plugin_data['Network'] ) );
-	// phpcs:enable WordPress.PHP.StrictComparisons.LooseComparison
-	unset( $plugin_data['_sitewide'] );
-
-	// If no text domain is defined fall back to the plugin slug.
-	if ( ! $plugin_data['TextDomain'] ) {
-		$plugin_slug = dirname( plugin_basename( $plugin_file ) );
-		if ( '.' !== $plugin_slug && false === strpos( $plugin_slug, '/' ) ) {
-			$plugin_data['TextDomain'] = $plugin_slug;
-		}
+	if ( empty( $query_string ) || ! is_string( $query_string ) ) {
+		return null;
 	}
 
-	if ( $markup || $translate ) {
-		$plugin_data = _get_plugin_data_markup_translate( $plugin_file, $plugin_data, $markup, $translate );
-	} else {
-		$plugin_data['Title']      = $plugin_data['Name'];
-		$plugin_data['AuthorName'] = $plugin_data['Author'];
+	parse_str( $query_string, $query_args );
+
+	return $query_args[ $arg ] ?? null;
+}
+
+function gen_integrity( string $input ): string {
+	$hash        = hash( 'sha384', $input, true );
+	$hash_base64 = base64_encode( $hash ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+	return "sha384-$hash_base64";
+}
+
+function path_from_url( string $url ): ?string {
+	$parsed_url = wp_parse_url( $url );
+	$file       = rtrim( ABSPATH, '/' ) . $parsed_url['path'];
+	$file_alt   = rtrim( dirname( ABSPATH ), '/' ) . $parsed_url['path'];
+
+	if ( is_file( $file ) ) {
+		return $file;
+	} elseif ( is_file( $file_alt ) ) {
+		return $file_alt;
 	}
 
-	return $plugin_data;
+	return null;
+}
+
+function get_plugin_version( string $plugin_file ): string {
+	$plugin_data = get_file_data( WP_PLUGIN_DIR . "/$plugin_file", array( 'Version' => 'Version' ), 'plugin' );
+	return $plugin_data['Version'];
 }
