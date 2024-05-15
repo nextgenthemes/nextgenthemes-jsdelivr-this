@@ -15,8 +15,8 @@ namespace Nextgenthemes\jsDelivrThis;
 
 const VERSION = '1.1.0';
 
-add_filter( 'script_loader_src', __NAMESPACE__ . '\\filter_script_loader_src', 10, 2 );
-add_filter( 'style_loader_src', __NAMESPACE__ . '\\filter_style_loader_src', 10, 2 );
+add_filter( 'script_loader_src', __NAMESPACE__ . '\filter_script_loader_src', 10, 2 );
+add_filter( 'style_loader_src', __NAMESPACE__ . '\filter_style_loader_src', 10, 2 );
 
 add_filter(
 	'plugin_action_links_' . plugin_basename( __FILE__ ),
@@ -108,7 +108,7 @@ function detect_plugin_asset( string $type, string $src, string $handle ): strin
 
 	if ( ! empty( $data->file_exists ) && ! empty( $data->integrity ) ) {
 		$src = $cdn_file;
-		add_integrity_to_asset( $type, $handle, $data );
+		add_integrity_to_asset( $type, $handle, $data->integrity );
 	}
 
 	return $src;
@@ -128,32 +128,54 @@ function ngt_headers( string $url ) {
 	return @get_headers( $url, 0, $context ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 }
 
-function add_integrity_to_asset( string $type, string $handle, object $data ): void {
+/**
+ * Adds integrity and crossorigin attributes to assets based on type.
+ *
+ * @param string $type The type of the asset ('script' or 'style').
+ * @param string $handle The handle of the asset.
+ * @param string $integrity The integrity value to be added.
+ */
+function add_integrity_to_asset( string $type, string $handle, string $integrity ): void {
 
-	add_filter(
-		$type . '_loader_tag',
-		function ( $html, $fn_handle ) use ( $type, $handle, $data ) {
+	if ( 'script' === $type ) {
+		add_filter(
+			'wp_script_attributes',
+			function ( array $attr ) use ( $handle, $integrity ) {
 
-			$tag      = ( 'style' === $type ) ? 'link' : 'script';
-			$tag_open = sprintf( '<%s ', tag_escape( $tag ) );
+				if ( ! empty( $attr['src'] ) &&
+					! empty( $attr['id'] ) &&
+					$attr['id'] === $handle . '-js'
+				) {
+					$attr['integrity']   = $integrity;
+					$attr['crossorigin'] = 'anonymous';
+				}
 
-			if ( $fn_handle === $handle &&
-				(
-					( 'style' === $type && str_contains( $html, 'href=' ) ) ||
-					( 'script' === $type && str_contains( $html, 'src=' ) )
-				)
-			) {
-				$html = str_replace(
-					$tag_open,
-					sprintf( $tag_open . "integrity='%s' crossorigin='anonymous' ", esc_attr( $data->integrity ) ),
-					$html
-				);
+				return $attr;
 			}
-			return $html;
-		},
-		10,
-		2
-	);
+		);
+	} else {
+		add_filter(
+			'style_loader_tag',
+			function ( $html, $fn_handle ) use ( $handle, $integrity ) {
+
+				if ( $fn_handle === $handle ) {
+
+					$p = new \WP_HTML_Tag_Processor( $html );
+
+					if ( $p->next_tag( 'link' ) && $p->get_attribute( 'href' ) ) {
+
+						$p->set_attribute( 'integrity', $integrity );
+						$p->set_attribute( 'crossorigin', 'anonymous' );
+						$html = $p->get_updated_html();
+					}
+				}
+
+				return $html;
+			},
+			10,
+			2
+		);
+	}
 }
 
 function get_jsdelivr_hash_api_data( string $file_path, string $handle, string $src ): ?object {
@@ -218,7 +240,7 @@ function detect_by_hash( string $type, string $src, string $handle ): string {
 			$data->name,
 			$data->version . $data->file
 		);
-		add_integrity_to_asset( $type, $handle, $data );
+		add_integrity_to_asset( $type, $handle, $data->integrity );
 	}
 
 	return $src;
