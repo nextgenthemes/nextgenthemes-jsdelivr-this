@@ -1,10 +1,10 @@
 === NGT jsDelivr CDN ===
 Contributors: nico23
-Tags: CDN, JS, JavaScript, jQuery, Performance, minimalistic, minimal
+Tags: CDN, JS, JavaScript, jsdelivr, nextgenthemes
 Donate link: https://nextgenthemes.com/donate
-Requires at least: 4.3.1
-Requires PHP: 5.6
-Tested up to: 5.2.2
+Requires at least: 6.2.0
+Requires PHP: 7.4
+Tested up to: 6.5.3
 Stable tag: 1.0.0
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -13,10 +13,13 @@ Free CDN for WordPress Core and Plugin assets.
 
 == Changelog ==
 
+= 2024-05-14 1.1.0 =
+* Modernized the code. 
+
 = 2019-09-07 1.0.0 =
 * Run only once per page-load.
 * Better function names and some useful comments.
-* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referer sends your site URL (I really do not like that)
+* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referrer sends your site URL (I really do not like that)
 
 = 2019-08-31 0.9.4 =
 * Coding standards, some minor things.
