@@ -87,8 +87,6 @@ function detect_plugin_asset( string $type, string $src, string $handle ): strin
 
 	if ( false === $data && ! $ran_already ) {
 
-		$opts['http']['timeout'] = 2;
-
 		$ran_already  = true;
 		$data         = new \stdClass();
 		$file_headers = ngt_headers( $cdn_file );
@@ -144,7 +142,7 @@ function add_integrity_to_asset( string $type, string $handle, string $integrity
 
 				if ( ! empty( $attr['src'] ) &&
 					! empty( $attr['id'] ) &&
-					$attr['id'] === $handle . '-js'
+					$handle . '-js' === $attr['id']
 				) {
 					$attr['integrity']   = $integrity;
 					$attr['crossorigin'] = 'anonymous';
