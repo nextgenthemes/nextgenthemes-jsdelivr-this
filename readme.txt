@@ -1,3 +1,4 @@
+
 === NGT jsDelivr CDN ===
 Contributors: nico23
 Tags: CDN, JS, JavaScript, jsdelivr, nextgenthemes
@@ -13,7 +14,7 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
-= 2024-12-04 1.2.0
+= 2024-12-04 1.2.0 =
 * New: A info dialog was added that is only loaded when the admin bar is visible.
 * New/Fix: Support for script modules.
 * Improved: Shorten potentially too long transient names.
@@ -26,7 +27,7 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 = 2019-09-07 1.0.0 =
 * Run only once per page-load.
 * Better function names and some useful comments.
-* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referrer by default would send your site URL (I really do not like that)
+* Send this plugins url as user-agent to jsDelivr knows how it's used. (They asked for this). This also means more privacy as the `wp_remote_get` referrer by default would send your site URL (I really do not like that)
 
 = 2019-08-31 0.9.4 =
 * Coding standards, some minor things.
@@ -48,5 +49,4 @@ This plugin adds a little a invisible button on the admin bar on the top right, 
 
 It took me a lot of time to come up with this plugin and I had many iterations over various different approaches how to do this until I came up with this working solution that also does not need much code. I know the official plugin was abandoned years ago and I looked at complicated bloated code and did not even feel like learning what its doing and never looked at it again and started from scratch.
 
-Please check out my commecial plugin and level up your video embeds with [ARVE Pro](https://nextgenthemes.com/plugins/arve-pro/) or [Donate here](https://nextgenthemes.com/donate/)
-
+Please check out my commercial plugin and level up your video embeds with [ARVE Pro](https://nextgenthemes.com/plugins/arve-pro/) or [Donate here](https://nextgenthemes.com/donate/)
