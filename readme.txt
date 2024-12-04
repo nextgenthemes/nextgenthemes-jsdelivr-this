@@ -9,9 +9,16 @@ Stable tag: 1.1.0
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
-Free CDN for WordPress Core and Plugin assets.
+Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
+
+= 2024-12-04 1.2.0
+* New: A info dialog was added that is only loaded when the admin bar is visible.
+* New/Fix: Support for script modules.
+* Improved: Shorten potentially too long transient names.
+* Improved: Replaced `get_headers` with `wp_safe_remote_head`. WP coding standards and more efficient.
+* Improved: Simplified and improved the code.
 
 = 2024-05-14 1.1.0 =
 * Modernized the code. 
@@ -19,7 +26,7 @@ Free CDN for WordPress Core and Plugin assets.
 = 2019-09-07 1.0.0 =
 * Run only once per page-load.
 * Better function names and some useful comments.
-* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referrer sends your site URL (I really do not like that)
+* Send this plugins url as user-agent to jsDelivr knows how its used. (They asked for this). This also means more privacy as the `wp_remote_get` referrer by default would send your site URL (I really do not like that)
 
 = 2019-08-31 0.9.4 =
 * Coding standards, some minor things.
@@ -31,14 +38,15 @@ Free CDN for WordPress Core and Plugin assets.
 * Release
 
 == Description ==
-It replaces all WP Core assets with versions hosted on jsDelivr.
+It replaces all assets with versions available on jsDelivr. No options, nothing to configure, just works.
 
-The following conditions need to be met that plugins assets will be served from jsDeliver:
+The code needs to be openly hosted on NPM, Github or wordpress.org.
 
-1. The plugin needs to be hosted on wp.org. Commercial plugins and plugins from elsewhere will not work because jsDelivr mirrors the wp.org plugin dir and nothing else.
-1. The asset src URL most have `/plugins/plugin-slug/` in them and end with `.js` or `.css` (excluding cash busting `?ver=1.2.3`).
-1. It needs to have its current version published as a tag on the wp.org plugins SVN. Some plugins may only push to /trunk/ (like my own at the time of writing) or do not have their latest version published as tags.
+This plugin adds a little a invisible button on the admin bar on the top right, left of "Howdy, Name". You can click that and see the assets loaded from jsDelivr.
 
-= Donations are really appreciated =
+= Support me =
 
-It took me a lot of time to come up with this plugin and I had many iterations over various different approaches how to do this until I came up with this working solution that also does not need much code. I know the official plugin was abandoned years ago and I looked at complicated bloated code and did not even feel like learning what its doing and never looked at it again and started from scratch. [Please donate here](https://nextgenthemes.com/donate/).
+It took me a lot of time to come up with this plugin and I had many iterations over various different approaches how to do this until I came up with this working solution that also does not need much code. I know the official plugin was abandoned years ago and I looked at complicated bloated code and did not even feel like learning what its doing and never looked at it again and started from scratch.
+
+Please check out my commecial plugin and level up your video embeds with [ARVE Pro](https://nextgenthemes.com/plugins/arve-pro/) or [Donate here](https://nextgenthemes.com/donate/)
+
