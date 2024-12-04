@@ -4,7 +4,7 @@
  * Plugin Name:       Free jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Serves all available assets from free jsDelivr CDN
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requres PHP:       7.4
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace Nextgenthemes\jsDelivrThis;
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\init' );
 
