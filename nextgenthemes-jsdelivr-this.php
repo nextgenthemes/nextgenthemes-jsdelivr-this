@@ -11,7 +11,8 @@
  * License:           GPL-3.0
  * License URI:       http://www.gnu.org/licenses/gpl-3.0.html
  */
-declare(strict_types=1);
+
+declare(strict_types = 1);
 
 namespace Nextgenthemes\jsDelivrThis;
 
@@ -324,11 +325,7 @@ function detect_plugin_asset( string $src, string $extension ): ?array {
 
 		if ( ! is_wp_error( $file_headers ) ) {
 			$data->file_exists = true;
-			$integrity         = integrity_for_src( $src );
-
-			if ( $integrity ) {
-				$data->integrity = gen_integrity( $integrity );
-			}
+			$data->integrity   = integrity_for_src( $src );
 		}
 
 		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)

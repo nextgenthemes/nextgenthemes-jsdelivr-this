@@ -14,6 +14,9 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
+= 2024-12-06 1.2.1 =
+* Fix: Code mistake caused `integrity` attribute to be wrong, plugin files would get blocked.
+
 = 2024-12-04 1.2.0 =
 * New: A info dialog was added that is only loaded when the admin bar is visible.
 * New/Fix: Support for script modules.
