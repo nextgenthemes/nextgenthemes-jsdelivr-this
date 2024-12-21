@@ -105,7 +105,6 @@ function arve_links(): string {
 	);
 }
 
-
 function admin_bar_html(): void {
 
 	if ( ! is_admin_bar_showing() ) {
