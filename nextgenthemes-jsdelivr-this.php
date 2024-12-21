@@ -4,7 +4,7 @@
  * Plugin Name:       Free jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Serves all available assets from free jsDelivr CDN
- * Version:           1.2.1
+ * Version:           1.2.2
  * Requres PHP:       7.4
  * Author:            Nicolas Jonas
  * Author URI:        https://nextgenthemes.com/donate
@@ -16,7 +16,7 @@ declare(strict_types = 1);
 
 namespace Nextgenthemes\jsDelivrThis;
 
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\init' );
 
@@ -251,6 +251,8 @@ function filter_style_loader_tag( string $html ): string {
 			$p->set_attribute( 'href', $by_plugin['src'] );
 			$p->set_attribute( 'integrity', $by_plugin['integrity'] );
 			$p->set_attribute( 'crossorigin', 'anonymous' );
+
+			return $p->get_updated_html();
 		}
 	}
 
@@ -321,7 +323,7 @@ function detect_plugin_asset( string $src, string $extension ): ?array {
 	if ( false === $data && ! call_limit() ) {
 
 		$data         = new \stdClass();
-		$file_headers = remote_get_head($cdn_file, [ 'timeout' => 2 ]);
+		$file_headers = remote_get_head( $cdn_file, [ 'timeout' => 2 ] );
 
 		if ( ! is_wp_error( $file_headers ) ) {
 			$data->file_exists = true;
@@ -360,7 +362,7 @@ function integrity_for_src( string $src ): ?string {
 
 function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
 
-	$transient_name = shorten_transient_name( 'ngt-jsd_' . $src);
+	$transient_name = shorten_transient_name( 'ngt-jsd_' . $src );
 	$result         = get_transient( $transient_name );
 
 	if ( false === $result && ! call_limit() ) {
@@ -529,12 +531,12 @@ function shorten_transient_name( string $transient_name ): string {
 
 	$transient_name = str_replace( 'https://', '', $transient_name );
 
-	if ( strlen($transient_name) > 172 ) {
+	if ( strlen( $transient_name ) > 172 ) {
 		$transient_name = preg_replace( '/[^a-zA-Z0-9_]/', '', $transient_name );
 	}
 
-	if ( strlen($transient_name) > 172 ) {
-		$transient_name = substr($transient_name, 0, 107) . '_' . hash( 'sha256', $transient_name ); // 107 + 1 + 64
+	if ( strlen( $transient_name ) > 172 ) {
+		$transient_name = substr( $transient_name, 0, 107 ) . '_' . hash( 'sha256', $transient_name ); // 107 + 1 + 64
 	}
 
 	return $transient_name;

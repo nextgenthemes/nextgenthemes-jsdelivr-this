@@ -1,10 +1,16 @@
-/bin           export-ignore
-/tests         export-ignore
 /.*            export-ignore
-/*.yml         export-ignore
-/*.xml         export-ignore
 /*.dist        export-ignore
+/*.js          export-ignore
+/*.xml         export-ignore
+/*.yml         export-ignore
+/bin           export-ignore
+/composer*     export-ignore
 /package*.json export-ignore
+/tsconfig.json export-ignore
+/tests         export-ignore
+/readme        export-ignore
+
+build/* -diff
 
 * text eol=lf
 *.gif binary
