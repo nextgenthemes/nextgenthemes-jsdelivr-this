@@ -1,0 +1,22 @@
+{
+	"name": "nextgenthemes/nextgenthemes-jsdelivr-this",
+	"description": "Free jsDelivr CDN",
+	"type": "wordpress-plugin",
+	"license": "GPL-3.0",
+	"authors": [
+		{
+			"name": "Nicolas Jonas",
+			"homepage": "https://nextgenthemes.com",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": ">=7.4"
+	},
+	"config": {
+		"optimize-autoloader": true,
+		"platform": {
+			"php": "7.4"
+		}
+	}
+}

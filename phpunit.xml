@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+  bootstrap="tests/phpunit-boot.php"
+  backupGlobals="false"
+  colors="true"
+  convertErrorsToExceptions="true"
+  convertNoticesToExceptions="true"
+  convertWarningsToExceptions="true"
+  convertDeprecationsToExceptions="false"
+  stopOnFailure="true"
+>
+  <coverage processUncoveredFiles="false">
+    <include>
+      <directory suffix=".php">.</directory>
+    </include>
+    <exclude>
+      <directory suffix=".asset.php">.</directory>
+      <directory>*/node_modules/*</directory>
+    </exclude>
+  </coverage>
+  <testsuites>
+    <testsuite name="nextgenthemes-jsdelivr-this">
+      <directory prefix="tests-" suffix=".php">./tests/</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>

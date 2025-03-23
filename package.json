@@ -1,0 +1,8 @@
+{
+	"name": "@nextgenthemes/nextgenthemes-jsdelivr-this",
+	"private": true,
+	"scripts": {
+		"build": "echo \"No build required\"",
+		"test": "phpunit"
+	}
+}

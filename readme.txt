@@ -1,4 +1,3 @@
-
 === NGT jsDelivr CDN ===
 Contributors: nico23
 Tags: CDN, JS, JavaScript, jsdelivr, nextgenthemes
@@ -13,6 +12,11 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
+
+= 2025-03-22 1.2.4 =
+* Fix: Wrong type returned.
+* Fix: Not included dialog.js file.
+* Improved: Minor code improvements.
 
 = 2024-12-21 1.2.3 =
 * Fix: Plugin style detection not working.

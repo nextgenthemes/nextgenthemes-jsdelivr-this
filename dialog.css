@@ -1,0 +1,47 @@
+/* stylelint-disable selector-max-id */
+
+#wp-admin-bar-ngt-jsdelivr a {
+	cursor: pointer;
+
+	&:hover {
+		background-color: darkred !important;
+	}
+}
+.ngt-jsdelivr-dialog {
+	--dialog-padding: 1.2rem;
+	width: 100dvw;
+	max-width: 50rem;
+	padding: 0 var(--dialog-padding);
+	font-size: 1rem;
+
+	border: 0;
+	border-radius: 2px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+	&::backdrop {
+		/* Style the backdrop */
+		background-color: rgba(0, 0, 0, .9);
+	}
+	pre {
+		overflow-x: auto;
+		font-size: 14px;
+	}
+}
+
+.ngt-jsdelivr-dialog__header {
+	position: relative;
+
+	> button {
+		--btn-bg: oklch(91% .01 281.07deg);
+
+		position: absolute;
+		top: 0;
+		right: calc(var(--dialog-padding) * -1);
+		background: var(--btn-bg);
+		border-width: 0;
+		border-radius: 0;
+
+		&:hover {
+			background-color: oklch(from var(--btn-bg) calc(l - .1) c h);
+		}
+	}
+}

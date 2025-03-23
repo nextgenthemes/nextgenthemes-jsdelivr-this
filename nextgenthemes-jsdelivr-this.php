@@ -16,6 +16,8 @@ declare(strict_types = 1);
 
 namespace Nextgenthemes\jsDelivrThis;
 
+use WP_HTML_Tag_Processor;
+
 const VERSION = '1.2.3';
 
 add_action( 'plugins_loaded', __NAMESPACE__ . '\init' );
@@ -27,23 +29,12 @@ function init(): void {
 
 	add_action( 'admin_bar_menu', __NAMESPACE__ . '\add_item_to_admin_bar', 33 );
 
+	add_filter( 'init', __NAMESPACE__ . '\register_assets' );
 	add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\enqueue_assets' );
 	add_action( 'admin_enqueue_scripts', __NAMESPACE__ . '\enqueue_assets' );
 
 	add_action( 'admin_footer', __NAMESPACE__ . '\admin_bar_html' );
 	add_action( 'wp_footer', __NAMESPACE__ . '\admin_bar_html' );
-
-	add_action(
-		'init',
-		function (): void {
-			wp_register_script_module(
-				'ngt-jsdelivr-dialog',
-				plugins_url( 'dialog.js', __FILE__ ),
-				array(),
-				VERSION
-			);
-		}
-	);
 
 	add_filter(
 		'plugin_row_meta',
@@ -74,9 +65,27 @@ function init(): void {
 	);
 }
 
+function register_assets(): void {
+
+	wp_register_style(
+		'ngt-jsdelivr-dialog',
+		plugins_url( 'dialog.css', __FILE__ ),
+		array( 'media-views' ),
+		VERSION
+	);
+
+	wp_register_script_module(
+		'ngt-jsdelivr-dialog',
+		plugins_url( 'dialog.js', __FILE__ ),
+		array(),
+		VERSION
+	);
+}
+
 function enqueue_assets(): void {
 
 	if ( is_admin_bar_showing() ) {
+		wp_enqueue_style( 'ngt-jsdelivr-dialog' );
 		wp_enqueue_script_module( 'ngt-jsdelivr-dialog' );
 	}
 }
@@ -111,8 +120,6 @@ function admin_bar_html(): void {
 		return;
 	}
 
-	wp_enqueue_style( 'media-views' );
-
 	?>
 <dialog class="ngt-jsdelivr-dialog">
 	<div class="ngt-jsdelivr-dialog__header">
@@ -122,7 +129,7 @@ function admin_bar_html(): void {
 			</span>
 		</button>
 	</div>
-	<h3><?= esc_html__( 'jsDelivr CDN plugin by Nextgenthemes', 'nextgenthemes-jsdelivr-this' ); ?></h3>
+	<h3><?php esc_html_e( 'jsDelivr CDN plugin by Nextgenthemes', 'nextgenthemes-jsdelivr-this' ); ?></h3>
 	<p>
 		<?php
 		esc_html_e(
@@ -146,53 +153,6 @@ function admin_bar_html(): void {
 		?>
 	</p>
 </dialog>
-<style>
-#wp-admin-bar-ngt-jsdelivr a {
-	cursor: pointer;
-
-	&:hover {
-		background-color: darkred !important;
-	}
-}
-.ngt-jsdelivr-dialog {
-	--dialog-padding: 1.2rem;
-
-	border: none;
-	border-radius: 2px;
-	box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-	padding: 0 var(--dialog-padding);
-	width: 100dvw;
-	max-width: 50rem;
-	font-size: 1rem;
-	&::backdrop {
-		/* Style the backdrop */
-		background-color: rgba(0, 0, 0, .9);
-	}
-	pre {
-		font-size: 14px;
-		overflow-x: auto;
-	}
-}
-
-.ngt-jsdelivr-dialog__header {
-	position: relative;
-
-	> button {
-		--btn-bg: oklch(0.91 0.01 281.07);
-
-		position: absolute;
-		top: 0;
-		right: calc(var(--dialog-padding) * -1);
-		border-radius: 0;
-		background: var(--btn-bg);
-		border-width: 0;
-
-		&:hover {
-			background-color: oklch(from var(--btn-bg) calc(l - 0.1) c h);
-		}
-	}
-}
-</style>
 	<?php
 }
 
@@ -222,7 +182,7 @@ function filter_script_attributes( array $attributes ): array {
 
 function filter_style_loader_tag( string $html ): string {
 
-	$p = new \WP_HTML_Tag_Processor( $html );
+	$p = new WP_HTML_Tag_Processor( $html );
 
 	// we may have multiple links here, like with rel="preload" and regular
 	while ( $p->next_tag( 'link' ) ) {
@@ -289,18 +249,18 @@ function get_plugin_dir_file( string $plugin_slug ): ?string {
  * Given a <link href="..."> or <script src="..."> it detects CDN files
  *
  * Plugins hosted on wp.org need some trickery by this plugin as the jsDelivr API does not detect them by hash.
- * #1 For wp.org assets the src URL most have `/plugins/plugin-slug/` in them and end with `.js` or `.css` (excluding cash busting `?ver=1.2.3`).
+ * #1 For wp.org assets the src URL must have `/plugins/plugin-slug/` in them and end with `.js` or `.css` (excluding cash busting `?ver=1.2.3`).
  * #2 wp.org assets need to have its current version published as a tag on the wp.org plugins SVN, `trunk` will not work.
  *
  * @param string $src     The src to detect.
  * @param string $extension The extension of the file (css or js).
  *
- * @return array|null The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN.
+ * @return array The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
  */
-function detect_plugin_asset( string $src, string $extension ): ?array {
+function detect_plugin_asset( string $src, string $extension ): array {
 
 	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
-		return $src;
+		return array();
 	}
 
 	preg_match( "#/plugins/(?<plugin_slug>[^/]+)/(?<path>.*\.$extension)#", $src, $matches );
@@ -310,10 +270,15 @@ function detect_plugin_asset( string $src, string $extension ): ?array {
 	}
 
 	if ( empty( $plugin_dir_file ) ) {
-		return null;
+		return array();
 	}
 
-	$plugin_ver     = get_plugin_version( $plugin_dir_file );
+	$plugin_ver = get_plugin_version( $plugin_dir_file );
+
+	if ( ! $plugin_ver ) {
+		return array();
+	}
+
 	$cdn_file       = 'https://cdn.jsdelivr.net/wp/' . $matches['plugin_slug'] . '/tags/' . $plugin_ver . '/' . $matches['path'];
 	$transient_name = shorten_transient_name( 'ngt-jsd_' . $cdn_file );
 
@@ -340,7 +305,7 @@ function detect_plugin_asset( string $src, string $extension ): ?array {
 		];
 	}
 
-	return null;
+	return array();
 }
 
 function integrity_for_src( string $src ): ?string {
@@ -410,10 +375,10 @@ function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
 	return $result;
 }
 
-function detect_by_hash( string $src ): ?array {
+function detect_by_hash( string $src ): array {
 
 	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
-		return $src;
+		return array();
 	}
 
 	$path = path_from_url( $src );
@@ -440,7 +405,7 @@ function detect_by_hash( string $src ): ?array {
 		];
 	}
 
-	return null;
+	return array();
 }
 
 /**
@@ -454,7 +419,7 @@ function get_url_arg( string $url, string $arg ): ?string {
 
 	$query_string = parse_url( $url, PHP_URL_QUERY );
 
-	if ( empty( $query_string ) || ! is_string( $query_string ) ) {
+	if ( empty( $query_string ) ) {
 		return null;
 	}
 
@@ -479,9 +444,14 @@ function gen_integrity( string $input ): string {
  * @return string|null The file path if it exists, or null otherwise.
  */
 function path_from_url( string $url ): ?string {
-	$parsed_url = wp_parse_url( $url );
-	$file       = rtrim( ABSPATH, '/' ) . $parsed_url['path'];
-	$file_alt   = rtrim( dirname( ABSPATH ), '/' ) . $parsed_url['path'];
+	$path = parse_url( $url, PHP_URL_PATH );
+
+	if ( null === $path || '' === $path ) {
+		return null;
+	}
+
+	$file     = rtrim( ABSPATH, '/' ) . $path;
+	$file_alt = rtrim( dirname( ABSPATH ), '/' ) . $path;
 
 	if ( is_file( $file ) ) {
 		return $file;
@@ -494,7 +464,7 @@ function path_from_url( string $url ): ?string {
 
 function get_plugin_version( string $plugin_file ): string {
 	$plugin_data = get_file_data( WP_PLUGIN_DIR . "/$plugin_file", array( 'Version' => 'Version' ), 'plugin' );
-	return $plugin_data['Version'];
+	return $plugin_data['Version'] ?? '';
 }
 
 /**
