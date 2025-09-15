@@ -24,6 +24,8 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\init' );
 
 function init(): void {
 
+	require_once __DIR__ . '/fn-remote-get.php';
+
 	add_filter( 'wp_script_attributes', __NAMESPACE__ . '\filter_script_attributes', 10, 1 );
 	add_filter( 'style_loader_tag', __NAMESPACE__ . '\filter_style_loader_tag', 10, 1 );
 
@@ -399,6 +401,12 @@ function detect_by_hash( string $src ): array {
 			$data->version . $data->file
 		);
 
+		$file_headers = remote_get_head_cached( $src, [ 'timeout' => 2 ] );
+
+		if ( is_wp_error( $file_headers ) ) {
+			return array();
+		}
+
 		return [
 			'src'        => $src,
 			'integrity'  => $data->integrity,
@@ -465,50 +473,6 @@ function path_from_url( string $url ): ?string {
 function get_plugin_version( string $plugin_file ): string {
 	$plugin_data = get_file_data( WP_PLUGIN_DIR . "/$plugin_file", array( 'Version' => 'Version' ), 'plugin' );
 	return $plugin_data['Version'] ?? '';
-}
-
-/**
- * @return mixed|WP_Error
- */
-function remote_get_head( string $url, array $args = array() ) {
-
-	$response = wp_safe_remote_head( $url, $args );
-
-	if ( is_wp_error( $response ) ) {
-		return $response;
-	}
-
-	$response_code = wp_remote_retrieve_response_code( $response );
-
-	if ( 200 !== $response_code ) {
-
-		return new \WP_Error(
-			$response_code,
-			sprintf(
-				// Translators: 1 URL 2 HTTP response code.
-				__( 'url: %1$s Status code 200 expected but was %2$s.', 'advanced-responsive-video-embedder' ),
-				$url,
-				$response_code
-			)
-		);
-	}
-
-	return $response;
-}
-
-function shorten_transient_name( string $transient_name ): string {
-
-	$transient_name = str_replace( 'https://', '', $transient_name );
-
-	if ( strlen( $transient_name ) > 172 ) {
-		$transient_name = preg_replace( '/[^a-zA-Z0-9_]/', '', $transient_name );
-	}
-
-	if ( strlen( $transient_name ) > 172 ) {
-		$transient_name = substr( $transient_name, 0, 107 ) . '_' . hash( 'sha256', $transient_name ); // 107 + 1 + 64
-	}
-
-	return $transient_name;
 }
 
 /**
