@@ -4,8 +4,6 @@ declare(strict_types = 1);
 
 namespace Nextgenthemes\ARVE\phpUnit;
 
-define( 'WP_PLUGIN_DIR', __DIR__ . '/plugins' );
-
 require_once __DIR__ . '/phpunit-debug-helpers.php';#
 
 $kint = getenv( 'KINT_DEBUG_PLUGIN_FILE' );

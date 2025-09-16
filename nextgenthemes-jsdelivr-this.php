@@ -20,7 +20,7 @@ use WP_HTML_Tag_Processor;
 
 const VERSION = '1.2.3';
 
-add_action( 'plugins_loaded', __NAMESPACE__ . '\init' );
+add_action( 'init', __NAMESPACE__ . '\init', 9 );
 
 function init(): void {
 
@@ -341,7 +341,7 @@ function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
 			$data   = wp_safe_remote_get(
 				'https://data.jsdelivr.com/v1/lookup/hash/' . $sha256,
 				array(
-					'user-agent' => 'https://nextgenthemes.com/plugins/jsdelivr-this',
+					'user-agent' => 'https://wordpress.org/plugins/nextgenthemes-jsdelivr-this/',
 					'timeout'    => 2,
 				)
 			);

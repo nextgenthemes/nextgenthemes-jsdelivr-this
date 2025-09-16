@@ -13,6 +13,9 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
+= 2025-09-16 1.2.5 =
+* Fix: Prevent 404 for some files by checking if files detected by hash are available on the CDN.
+
 = 2025-03-22 1.2.4 =
 * Fix: Wrong type returned.
 * Fix: Not included dialog.js file.
