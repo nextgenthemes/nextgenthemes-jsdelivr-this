@@ -4,7 +4,7 @@ Tags: CDN, JS, JavaScript, jsdelivr, nextgenthemes
 Donate link: https://nextgenthemes.com/donate
 Requires at least: 6.2.0
 Requires PHP: 7.4
-Tested up to: 6.5.3
+Tested up to: 6.8.2
 Stable tag: 1.2.5
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
@@ -13,7 +13,7 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
-= 2025-09-16 1.2.5 =
+= 2025-09-16 1.2.6 =
 * Fix: Prevent 404 for some files by checking if files detected by hash are available on the CDN.
 
 = 2025-03-22 1.2.4 =
