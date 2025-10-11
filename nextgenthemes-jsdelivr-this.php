@@ -20,6 +20,17 @@ use WP_HTML_Tag_Processor;
 
 const VERSION = '1.2.6';
 
+add_action( 'after_setup_theme', __NAMESPACE__ . '\after_setup_theme', 11 );
+
+function after_setup_theme(): void {
+
+	$position = wp_is_block_theme() ? 'wp_head' : 'wp_footer';
+	remove_action( $position, array( wp_script_modules(), 'print_import_map' ) );
+	remove_action( $position, array( wp_script_modules(), 'print_script_module_preloads' ) );
+	add_action( $position, __NAMESPACE__ . '\print_import_map' );
+	add_action( $position, __NAMESPACE__ . '\print_script_module_preloads' );
+}
+
 add_action( 'init', __NAMESPACE__ . '\init', 9 );
 
 function init(): void {
@@ -27,7 +38,7 @@ function init(): void {
 	require_once __DIR__ . '/fn-remote-get.php';
 
 	add_filter( 'wp_script_attributes', __NAMESPACE__ . '\filter_script_attributes', 10, 1 );
-	add_filter( 'style_loader_tag', __NAMESPACE__ . '\filter_style_loader_tag', 10, 1 );
+	add_filter( 'style_loader_tag', __NAMESPACE__ . '\filter_link_tags', 10, 1 );
 
 	add_action( 'admin_bar_menu', __NAMESPACE__ . '\add_item_to_admin_bar', 33 );
 
@@ -64,6 +75,47 @@ function init(): void {
 
 			return $links;
 		}
+	);
+}
+
+function print_script_module_preloads(): void {
+
+	ob_start();
+
+	wp_script_modules()->print_script_module_preloads();
+	// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	echo filter_link_tags( ob_get_clean() );
+}
+
+function print_import_map(): void {
+
+	ob_start();
+
+	wp_script_modules()->print_import_map();
+
+	// phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags
+	$import_map = json_decode( strip_tags( ob_get_clean() ), true );
+
+	if ( empty( $import_map['imports'] ) ) {
+		return;
+	}
+
+	foreach ( $import_map['imports'] as $id => $src ) {
+
+		$attributes['src'] = $src;
+		$attributes        = filter_script_attributes( $attributes );
+
+		if ( ! empty( $attributes['integrity'] ) ) {
+			$import_map['integrity'][ $src ] = $attributes['integrity'];
+		}
+	}
+
+	wp_print_inline_script_tag(
+		wp_json_encode( $import_map, JSON_HEX_TAG | JSON_HEX_AMP ),
+		array(
+			'type' => 'importmap',
+			'id'   => 'wp-importmap',
+		)
 	);
 }
 
@@ -104,7 +156,7 @@ function add_item_to_admin_bar( object $admin_bar ): void {
 	);
 }
 
-function arve_links(): string {
+function arve_links() {
 	return wp_kses(
 		sprintf(
 				// translators: %1$s: link, %2$s: link
@@ -182,7 +234,7 @@ function filter_script_attributes( array $attributes ): array {
 	return $attributes;
 }
 
-function filter_style_loader_tag( string $html ): string {
+function filter_link_tags( string $html ) {
 
 	$p = new WP_HTML_Tag_Processor( $html );
 
@@ -449,7 +501,7 @@ function gen_integrity( string $input ): string {
  * checks the parent directory of the WordPress root directory.
  *
  * @param string $url The URL to retrieve the file path for.
- * @return string|null The file path if it exists, or null otherwise.
+ * return string|null The file path if it exists, or null otherwise.
  */
 function path_from_url( string $url ): ?string {
 	$path = parse_url( $url, PHP_URL_PATH );
@@ -470,7 +522,7 @@ function path_from_url( string $url ): ?string {
 	return null;
 }
 
-function get_plugin_version( string $plugin_file ): string {
+function get_plugin_version( string $plugin_file ) {
 	$plugin_data = get_file_data( WP_PLUGIN_DIR . "/$plugin_file", array( 'Version' => 'Version' ), 'plugin' );
 	return $plugin_data['Version'] ?? '';
 }
