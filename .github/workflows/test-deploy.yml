@@ -107,11 +107,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@master
 
+      - name: Get repo name (owner/repo -> repo)
+        id: repo
+        run: |
+          echo "repo=${GITHUB_REPOSITORY##*/}" >> "$GITHUB_OUTPUT"
+
       - name: git archive .zip
         run: git archive -o /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip --prefix=${{ env.REPO }}/ ${{ github.ref_name }}
+        env:
+          REPO: ${{ steps.repo.outputs.repo }}
 
       - name: Copy to arve.zip for permalink to latest version
         run: cp /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip /tmp/${{ env.REPO }}.zip 
+        env:
+          REPO: ${{ steps.repo.outputs.repo }}
 
       - name: Create Release
         uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # 2.0.4 https://github.com/softprops/action-gh-release/releases
@@ -122,3 +131,5 @@ jobs:
           files: |
             /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip
             /tmp/${{ env.REPO }}.zip
+        env:
+          REPO: ${{ steps.repo.outputs.repo }}
