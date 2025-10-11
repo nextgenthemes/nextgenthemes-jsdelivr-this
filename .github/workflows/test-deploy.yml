@@ -1,0 +1,124 @@
+name: test-deploy
+on: [push, pull_request]
+
+jobs:
+  beta:
+    if: >
+      startsWith(github.ref, 'refs/tags')
+      || contains(github.event.head_commit.message, '[ci]')
+      || contains(github.event.head_commit.message, '[cov]')
+    runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.get.outputs.ver }}
+    steps:
+      - name: Get latest WP beta version
+        id: get
+        run: >-
+          php --run "echo 'ver=' .
+          json_decode( file_get_contents( 'https://api.wordpress.org/core/version-check/1.7/?version=6.7&channel=beta' ) )->offers[0]->version;"
+          >> "$GITHUB_OUTPUT"
+      - name: Echo latest WP version (including beta releases)
+        run: echo ${{ steps.get.outputs.ver }}
+
+  test:
+    needs: beta
+    name: PHP Unit tests
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [ '7.4', '8.4' ] # https://www.php.net/supported-versions
+        wordpress: [ '6.5', "${{ needs.beta.outputs.ver }}" ] # https://wordpress.org/download/releases/
+    services:
+      mysql:
+        image: mariadb:10.11
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: false
+          MYSQL_ROOT_PASSWORD: dbpass
+          MYSQL_DATABASE: dbname
+        ports:
+          - 3306/tcp
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@7fdd3ece872ec7ec4c098ae5ab7637d5e0a96067 # 2.26.0 # https://github.com/shivammathur/setup-php/releases/
+        with:
+          php-version: ${{ matrix.php }}
+          ini-values: zend.assertions=1, error_reporting=-1, display_errors=On
+          extensions: mbstring, dom, zip, mysql, gd
+          tools: phpunit-polyfills:1
+          coverage: ${{ contains(github.event.head_commit.message, '[cov]') && 'xdebug' || 'none' }}
+  
+      - name: Start mysql service
+        run: sudo /etc/init.d/mysql start
+
+      - name: Install WP Tests
+        run: bash ./bin/install-wp-tests.sh dbname root dbpass "127.0.0.1:$DB_PORT" ${{ matrix.wordpress }} true
+        env:
+          DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+
+      - name: Run PHPUnit without code coverage
+        if: (!contains(github.event.head_commit.message, '[cov]'))
+        run: phpunit
+
+      - name: Run PHPUnit with code coverage
+        if: contains(github.event.head_commit.message, '[cov]') && matrix.php == '8.3' && matrix.wordpress == needs.beta.outputs.ver
+        run: phpunit --coverage-html coverage
+
+      - name: Archive code coverage results
+        if: contains(github.event.head_commit.message, '[cov]') && matrix.php == '8.3' && matrix.wordpress == needs.beta.outputs.ver
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: coverage
+
+  deploy-wporg:
+    needs: test
+    if: >
+      startsWith(github.ref, 'refs/tags') &&
+      (!contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'dev'))
+    name: SVN commit to wp.org
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to WP.org
+        uses: nextgenthemes/action-wordpress-plugin-deploy@master
+        with:
+          version: ${{github.ref_name}}
+          svn_user: ${{ secrets.SVN_USERNAME }}
+          svn_pass: ${{ secrets.SVN_PASSWORD }}
+          verbose: true
+          dry-run: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'dev') }}
+
+  deploy-github:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags')
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    env:
+      REPO: ${{ github.repository.split('/')[1] }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+
+      - name: git archive .zip
+        run: git archive -o /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip --prefix=${{ env.REPO }}/ ${{ github.ref_name }}
+
+      - name: Copy to arve.zip for permalink to latest version
+        run: cp /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip /tmp/${{ env.REPO }}.zip 
+
+      - name: Create Release
+        uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # 2.0.4 https://github.com/softprops/action-gh-release/releases
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          make_latest: true
+          files: |
+            /tmp/${{ env.REPO }}-${{ github.ref_name }}.zip
+            /tmp/${{ env.REPO }}.zip
