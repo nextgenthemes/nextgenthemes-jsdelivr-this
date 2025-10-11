@@ -18,7 +18,7 @@ namespace Nextgenthemes\jsDelivrThis;
 
 use WP_HTML_Tag_Processor;
 
-const VERSION = '1.2.6';
+const VERSION = '1.2.7';
 
 add_action( 'after_setup_theme', __NAMESPACE__ . '\after_setup_theme', 11 );
 
