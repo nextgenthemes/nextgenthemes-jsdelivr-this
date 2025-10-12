@@ -12,15 +12,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          path: advanced-responsive-video-embedder
 
       - run: pwd
 
       - name: Deploy readme only to wp.org
         uses: nextgenthemes/action-wordpress-plugin-deploy@master
         with:
-          workdir: advanced-responsive-video-embedder
           svn_user: ${{ secrets.SVN_USERNAME }}
           svn_pass: ${{ secrets.SVN_PASSWORD }}
           readme-and-assets-only: true
