@@ -1,4 +1,4 @@
-=== NGT jsDelivr CDN ===
+=== NextGenThemes jsDelivr CDN ===
 Contributors: nico23
 Tags: CDN, JS, JavaScript, jsdelivr, nextgenthemes
 Donate link: https://nextgenthemes.com/donate
@@ -12,6 +12,9 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
+
+= 2025-10-12 1.3.3 =
+* Improved: Updated logo.
 
 = 2025-10-11 1.3.0 =
 * New: Full support for script modules, including import map and `<link rel="modulepreload" `
