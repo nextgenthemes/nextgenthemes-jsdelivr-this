@@ -98,7 +98,8 @@ jobs:
 
   deploy-github:
     needs: test
-    if: startsWith(github.ref, 'refs/tags')
+    if: false
+    #if: startsWith(github.ref, 'refs/tags')
     name: Upload Release Asset
     runs-on: ubuntu-latest
     steps:
