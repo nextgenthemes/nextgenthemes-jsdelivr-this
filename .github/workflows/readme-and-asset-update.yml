@@ -6,7 +6,7 @@ on:
 
 jobs:
   update-readme:
-    if: contains(github.event.head_commit.message, '[readme]') | contains(github.event.head_commit.message, '[assets]')
+    if: contains(github.event.head_commit.message, '[readme]') || contains(github.event.head_commit.message, '[assets]')
     name: Readme and Asset update to wp.org
     runs-on: ubuntu-latest
     steps:

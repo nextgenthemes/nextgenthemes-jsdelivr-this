@@ -1,7 +1,7 @@
 <?php
 /**
  * @wordpress-plugin
- * Plugin Name:       Free jsDelivr CDN
+ * Plugin Name:       NextGenThemes jsDelivr CDN
  * Plugin URI:        https://nextgenthemes.com
  * Description:       Serves all available assets from free jsDelivr CDN
  * Version:           1.3.3
