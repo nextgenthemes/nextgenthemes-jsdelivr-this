@@ -90,23 +90,26 @@ function print_script_module_preloads(): void {
 function print_import_map(): void {
 
 	ob_start();
-
 	wp_script_modules()->print_import_map();
+	$html = ob_get_clean();
 
 	// phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags
-	$import_map = json_decode( strip_tags( ob_get_clean() ), true );
+	$import_map = json_decode( strip_tags( $html ), true );
 
 	if ( empty( $import_map['imports'] ) ) {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo $html;
 		return;
 	}
 
-	foreach ( $import_map['imports'] as $id => $src ) {
+	foreach ( $import_map['imports'] as $id => $old_src ) {
 
-		$attributes['src'] = $src;
-		$attributes        = filter_script_attributes( $attributes );
+		$attr['src'] = $old_src;
+		$attr        = filter_script_attributes( $attr );
 
-		if ( ! empty( $attributes['integrity'] ) ) {
-			$import_map['integrity'][ $src ] = $attributes['integrity'];
+		if ( ! empty( $attr['integrity'] ) ) {
+			$import_map['imports'][ $id ]            = $attr['src'];
+			$import_map['integrity'][ $attr['src'] ] = $attr['integrity'];
 		}
 	}
 
