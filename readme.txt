@@ -5,7 +5,7 @@ Donate link: https://nextgenthemes.com/donate
 Requires at least: 6.2.0
 Requires PHP: 8.0
 Tested up to: 6.8.2
-Stable tag: 1.3.4-beta1
+Stable tag: 1.3.4-beta2
 License: GPL 3.0
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
