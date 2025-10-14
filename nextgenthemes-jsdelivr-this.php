@@ -156,7 +156,7 @@ function add_item_to_admin_bar( object $admin_bar ): void {
 	);
 }
 
-function arve_links() {
+function arve_links(): string {
 	return wp_kses(
 		sprintf(
 				// translators: %1$s: link, %2$s: link
@@ -234,7 +234,7 @@ function filter_script_attributes( array $attributes ): array {
 	return $attributes;
 }
 
-function filter_link_tags( string $html ) {
+function filter_link_tags( string $html ): string {
 
 	$p = new WP_HTML_Tag_Processor( $html );
 
@@ -250,26 +250,24 @@ function filter_link_tags( string $html ) {
 		$by_hash = detect_by_hash( $href );
 
 		if ( $by_hash ) {
+
 			$p->set_attribute( 'href', $by_hash['src'] );
 			$p->set_attribute( 'integrity', $by_hash['integrity'] );
 			$p->set_attribute( 'crossorigin', 'anonymous' );
 
-			// we already got what we wanted, so exit early
-			return $p->get_updated_html();
-		}
+		} else {
 
-		$by_plugin = detect_plugin_asset( $href, 'css' );
+			$by_plugin = detect_plugin_asset( $href, 'css' );
 
-		if ( $by_plugin ) {
-			$p->set_attribute( 'href', $by_plugin['src'] );
-			$p->set_attribute( 'integrity', $by_plugin['integrity'] );
-			$p->set_attribute( 'crossorigin', 'anonymous' );
-
-			return $p->get_updated_html();
+			if ( $by_plugin ) {
+				$p->set_attribute( 'href', $by_plugin['src'] );
+				$p->set_attribute( 'integrity', $by_plugin['integrity'] );
+				$p->set_attribute( 'crossorigin', 'anonymous' );
+			}
 		}
 	}
 
-	return $html;
+	return $p->get_updated_html();
 }
 
 /**
@@ -522,7 +520,7 @@ function path_from_url( string $url ): ?string {
 	return null;
 }
 
-function get_plugin_version( string $plugin_file ) {
+function get_plugin_version( string $plugin_file ): string {
 	$plugin_data = get_file_data( WP_PLUGIN_DIR . "/$plugin_file", array( 'Version' => 'Version' ), 'plugin' );
 	return $plugin_data['Version'] ?? '';
 }

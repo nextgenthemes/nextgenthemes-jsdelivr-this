@@ -13,6 +13,9 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
+= 2025-10-14 1.3.4 =
+* Fix: Things
+
 = 2025-10-12 1.3.3 =
 * Improved: Updated logo.
 

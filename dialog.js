@@ -9,19 +9,44 @@ const dialogP = qs( '.ngt-jsdelivr-dialog p' );
 const dialogPre = qs( '.ngt-jsdelivr-dialog pre' );
 const dialogClose = qs( '.ngt-jsdelivr-dialog button' );
 
-if ( ! styles.length && ! scripts.length && dialogP ) {
-	dialogP.textContent = 'No assets loaded from jsDelivr CDN. Something seems to be wrong.';
-	qs( '.ngt-jsdelivr-dialog p:last-of-type' )?.remove();
+function appendURL( url ) {
+	const newText = d.createTextNode( url.replace( 'https://', '' ) + '\n' );
+	dialogPre.appendChild( newText );
 }
 
+function appendImportMapURLs() {
+	const importMapElement = d.getElementById( 'wp-importmap' );
+	if ( ! importMapElement ) {
+		return;
+	}
+	let importMap;
+	try {
+		importMap = JSON.parse( importMapElement.textContent );
+	} catch ( error ) {
+		console.error( 'Failed to parse import map:', error );
+		return;
+	}
+	const integrity = importMap.integrity || {};
+
+	for ( const url in integrity ) {
+		if ( Object.hasOwnProperty.call( integrity, url ) ) {
+			if ( url.startsWith( 'https://cdn.jsdelivr.net' ) ) {
+				continue;
+			}
+
+			appendURL( url );
+		}
+	}
+}
+
+appendImportMapURLs();
+
 scripts.forEach( ( el ) => {
-	const newText = d.createTextNode( el.getAttribute( 'src' ).replace( 'https://', '' ) + '\n' );
-	dialogPre.appendChild( newText );
+	appendURL( el.getAttribute( 'src' ) );
 } );
 
 styles.forEach( ( el ) => {
-	const newText = d.createTextNode( el.getAttribute( 'href' ).replace( 'https://', '' ) + '\n' );
-	dialogPre.appendChild( newText );
+	appendURL( el.getAttribute( 'href' ) );
 } );
 
 adminBarLink.removeAttribute( 'href' );
