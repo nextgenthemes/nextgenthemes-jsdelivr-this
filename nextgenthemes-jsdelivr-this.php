@@ -217,6 +217,17 @@ function admin_bar_html(): void {
 
 function filter_script_attributes( array $attributes ): array {
 
+	$wp_asset = detect_wp_asset( $attributes['src'] );
+
+	if ( $wp_asset ) {
+		$attributes['src']         = $wp_asset['src'];
+		$attributes['integrity']   = $wp_asset['integrity'];
+		$attributes['crossorigin'] = 'anonymous';
+
+		// we already got what we wanted, so exit early
+		return $attributes;
+	}
+
 	$by_hash = detect_by_hash( $attributes['src'] );
 
 	if ( $by_hash ) {
@@ -234,6 +245,8 @@ function filter_script_attributes( array $attributes ): array {
 		$attributes['src']         = $by_plugin['src'];
 		$attributes['integrity']   = $by_plugin['integrity'];
 		$attributes['crossorigin'] = 'anonymous';
+
+		return $attributes;
 	}
 
 	return $attributes;
@@ -252,23 +265,31 @@ function filter_link_tags( string $html ): string {
 			continue;
 		}
 
+		$wp_asset = detect_wp_asset( $href );
+
+		if ( $wp_asset ) {
+			$p->set_attribute( 'href', $wp_asset['src'] );
+			$p->set_attribute( 'integrity', $wp_asset['integrity'] );
+			$p->set_attribute( 'crossorigin', 'anonymous' );
+			continue;
+		}
+
 		$by_hash = detect_by_hash( $href );
 
 		if ( $by_hash ) {
-
 			$p->set_attribute( 'href', $by_hash['src'] );
 			$p->set_attribute( 'integrity', $by_hash['integrity'] );
 			$p->set_attribute( 'crossorigin', 'anonymous' );
+			continue;
+		}
 
-		} else {
+		$by_plugin = detect_plugin_asset( $href, 'css' );
 
-			$by_plugin = detect_plugin_asset( $href, 'css' );
-
-			if ( $by_plugin ) {
-				$p->set_attribute( 'href', $by_plugin['src'] );
-				$p->set_attribute( 'integrity', $by_plugin['integrity'] );
-				$p->set_attribute( 'crossorigin', 'anonymous' );
-			}
+		if ( $by_plugin ) {
+			$p->set_attribute( 'href', $by_plugin['src'] );
+			$p->set_attribute( 'integrity', $by_plugin['integrity'] );
+			$p->set_attribute( 'crossorigin', 'anonymous' );
+			continue;
 		}
 	}
 
@@ -381,6 +402,110 @@ function integrity_for_src( string $src ): ?string {
 	return null;
 }
 
+/**
+ * Assert that the current WordPress installation is a stable release.
+ *
+ * @throws RuntimeException If the version string contains a pre‑release identifier
+ *                           such as “beta”, “alpha”, “rc”, or “dev”.
+ *
+ * @return string The full WordPress version (e.g. “6.5.2”).
+ */
+function get_stable_wp_version(): ?string {
+
+	// Pre‑release identifiers that make a build non‑stable.
+	$pre_release_patterns = [
+		'/beta/i',
+		'/alpha/i',
+		'/rc/i',
+		'/dev/i',
+	];
+
+	foreach ( $pre_release_patterns as $pattern ) {
+		if ( preg_match( $pattern, $GLOBALS['wp_version'] ) ) {
+			return null;
+		}
+	}
+
+	// No pre‑release strings found – the version is stable.
+	return $GLOBALS['wp_version'];
+}
+
+/**
+ * Return the part of a URL that comes after the “/wp‑includes/” segment.
+ *
+ * @param string $url          Full URL (may contain query string or fragment).
+ * @param string $segment      The segment to look for – defaults to “/wp‑includes/”.
+ *
+ * @return string Empty string if the segment is not present,
+ *                otherwise the path that follows the segment.
+ */
+function get_wp_asset_path( string $url ): ?string {
+	// Remove query string and fragment – we only care about the path.
+	$clean = strtok( $url, '?#' );
+
+	$pos_includes = strpos( $clean, '/wp-includes/' );
+
+	if ( false !== $pos_includes ) {
+		return substr( $clean, $pos_includes );
+	}
+
+	$pos_admin = strpos( $clean, '/wp-admin/' );
+
+	if ( false !== $pos_admin ) {
+		return substr( $clean, $pos_admin );
+	}
+
+	return null;
+}
+
+function detect_wp_asset( string $src ): array {
+
+	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ||
+		! str_contains( $src, '/wp-includes/' ) ||
+		! str_contains( $src, '/wp-admin/' )
+	) {
+		return array();
+	}
+
+	$wp_version = get_stable_wp_version();
+
+	if ( $wp_version ) {
+		return array();
+	}
+
+	$wp_asset_path = get_wp_asset_path( $src );
+
+	if ( ! $wp_asset_path ) {
+		return array();
+	}
+
+	# https://cdn.jsdelivr.net/gh/WordPress/WordPress@6.8.2/wp-includes/js/dist/script-modules/interactivity/debug.js
+
+	$cdn_file       = 'https://cdn.jsdelivr.net/gh/WordPress/WordPress@' . $wp_version . $wp_asset_path;
+	$transient_name = shorten_transient_name( 'ngt-jsd_' . $cdn_file );
+
+	$data = get_transient( $transient_name );
+
+	if ( false === $data && ! call_limit() ) {
+
+		$data            = new \stdClass();
+		$data->integrity = integrity_for_src( $src );
+
+		set_transient( $transient_name, $data, YEAR_IN_SECONDS );
+	}
+
+	d( $data );
+
+	if ( ! empty( $data->integrity ) ) {
+		return [
+			'src'        => $cdn_file,
+			'integrity'  => $data->integrity,
+		];
+	}
+
+	return array();
+}
+
 function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
 	$transient_name = shorten_transient_name( 'ngt-jsd_' . $src );
 	$result         = get_transient( $transient_name );
@@ -397,8 +522,6 @@ function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
 }
 
 function fetch_and_cache_jsdelivr_data( string $file_path, string $transient_name ): object {
-
-	d( $file_path );
 
 	$result       = new \stdClass();
 	$file_content = file_get_contents( $file_path );
