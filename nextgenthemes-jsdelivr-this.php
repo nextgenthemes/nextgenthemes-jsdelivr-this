@@ -20,14 +20,16 @@ use WP_HTML_Tag_Processor;
 
 const VERSION = '1.3.4-beta2';
 
-add_action( 'after_setup_theme', __NAMESPACE__ . '\after_setup_theme', 11 );
+add_action( 'after_setup_theme', __NAMESPACE__ . '\after_setup_theme' );
 
 function after_setup_theme(): void {
 
 	$position = wp_is_block_theme() ? 'wp_head' : 'wp_footer';
 	remove_action( $position, array( wp_script_modules(), 'print_import_map' ) );
+	remove_action( $position, array( wp_script_modules(), 'print_enqueued_script_modules' ) );
 	remove_action( $position, array( wp_script_modules(), 'print_script_module_preloads' ) );
 	add_action( $position, __NAMESPACE__ . '\print_import_map' );
+	add_action( $position, array( wp_script_modules(), 'print_enqueued_script_modules' ) );
 	add_action( $position, __NAMESPACE__ . '\print_script_module_preloads' );
 }
 
@@ -380,54 +382,87 @@ function integrity_for_src( string $src ): ?string {
 }
 
 function get_jsdelivr_hash_api_data( string $file_path, string $src ): ?object {
-
 	$transient_name = shorten_transient_name( 'ngt-jsd_' . $src );
 	$result         = get_transient( $transient_name );
 
-	if ( false === $result && ! call_limit() ) {
-
-		$result       = new \stdClass();
-		$file_content = file_get_contents( $file_path );
-
-		if ( $file_content ) {
-			$sha256 = hash( 'sha256', $file_content );
-			$data   = wp_safe_remote_get(
-				'https://data.jsdelivr.com/v1/lookup/hash/' . $sha256,
-				array(
-					'user-agent' => 'https://wordpress.org/plugins/nextgenthemes-jsdelivr-this/',
-					'timeout'    => 2,
-				)
-			);
-
-			if ( ! is_wp_error( $data ) ) {
-
-				$body = wp_remote_retrieve_body( $data );
-
-				if ( '' === $body ) {
-					wp_trigger_error( __FUNCTION__, 'Empty body' );
-				} else {
-
-					try {
-						$result = (object) json_decode( $body, false, 5, JSON_THROW_ON_ERROR );
-					} catch ( \Exception $e ) {
-						wp_trigger_error( __FUNCTION__, $e->getMessage() );
-					}
-				}
-
-				$result->integrity = gen_integrity( $file_content );
-			}
-		}
-
-		// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
-		set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
+	if ( false !== $result ) {
+		return $result;
 	}
 
-	// So we can used nulled return type on php 7.4. Union types require 8.0
-	if ( false === $result ) {
-		$result = null;
+	if ( call_limit() ) {
+		return null;
 	}
 
+	return fetch_and_cache_jsdelivr_data( $file_path, $transient_name );
+}
+
+function fetch_and_cache_jsdelivr_data( string $file_path, string $transient_name ): object {
+
+	d( $file_path );
+
+	$result       = new \stdClass();
+	$file_content = file_get_contents( $file_path );
+
+	if ( ! $file_content ) {
+		cache_jsdelivr_api_result( $transient_name, $result );
+		return $result;
+	}
+
+	$sha256   = hash( 'sha256', $file_content );
+	$api_data = wp_safe_remote_get(
+		'https://data.jsdelivr.com/v1/lookup/hash/' . $sha256,
+		[
+			'user-agent' => 'https://wordpress.org/plugins/nextgenthemes-jsdelivr-this/',
+			'timeout'    => 2,
+		]
+	);
+
+	d( $file_path, $api_data );
+
+	process_jsdelivr_api_response( $api_data, $result );
+	if ( property_exists( $result, 'file' ) && property_exists( $result, 'type' ) ) {
+		$result->integrity = gen_integrity( $file_content );
+	}
+
+	cache_jsdelivr_api_result( $transient_name, $result );
 	return $result;
+}
+
+/**
+ * @param array|WP_Error $api_data
+ */
+function process_jsdelivr_api_response( $api_data, object &$result ): void {
+	if ( is_wp_error( $api_data ) ) {
+		wp_trigger_error( __FUNCTION__, $api_data->get_error_message() );
+		return;
+	}
+
+	$response_code = wp_remote_retrieve_response_code( $api_data );
+	if ( 404 === $response_code ) {
+		return;
+	}
+
+	$body = trim( wp_remote_retrieve_body( $api_data ) );
+	if ( empty( $body ) ) {
+		wp_trigger_error( __FUNCTION__, 'Empty body' );
+		return;
+	}
+
+	if ( 200 !== $response_code ) {
+		wp_trigger_error( __FUNCTION__, 'Response code: ' . $response_code );
+		return;
+	}
+
+	try {
+		$result = json_decode( $body, false, 5, JSON_THROW_ON_ERROR );
+	} catch ( \Exception $e ) {
+		wp_trigger_error( __FUNCTION__, $e->getMessage() );
+	}
+}
+
+function cache_jsdelivr_api_result( string $transient_name, object $result ): void {
+	// Random time between 24 and 48h to avoid calls getting made every pageload (if only one lonely visitor)
+	set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 }
 
 function detect_by_hash( string $src ): array {
