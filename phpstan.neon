@@ -1,0 +1,5 @@
+includes:
+    - ../advanced-responsive-video-embedder/phpstan.neon
+parameters:
+	paths:
+		- .
