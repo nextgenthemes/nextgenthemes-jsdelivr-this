@@ -60,3 +60,63 @@ function rm_logfile( string $file ): void {
 		unlink( $file );
 	}
 }
+
+/**
+ * Get all callbacks hooked to a WordPress hook.
+ *
+ * @param string $hook_name Hook name, e.g. 'wp_head'.
+ * @return array<int, array{
+ *     priority: int,
+ *     callable: string,
+ *     accepted_args: int|null,
+ *     raw: mixed
+ * }> Array of callbacks grouped by numeric index.
+ */
+function get_hooked_callbacks( string $hook_name = 'wp_head' ): array {
+	global $wp_filter;
+
+	if ( ! isset( $wp_filter[ $hook_name ] ) ) {
+		return [];
+	}
+
+	$hook_obj = $wp_filter[ $hook_name ];
+
+	// WP_Hook since WP 4.7
+	if ( $hook_obj instanceof WP_Hook ) {
+		$callbacks = $hook_obj->callbacks;
+	} else {
+		$callbacks = (array) $hook_obj;
+	}
+
+	$result = [];
+
+	foreach ( $callbacks as $priority => $items ) {
+		foreach ( $items as $id => $data ) {
+			$function      = $data['function'] ?? $data;
+			$accepted_args = $data['accepted_args'] ?? null;
+
+			if ( is_array( $function ) ) {
+				if ( is_object( $function[0] ) ) {
+					$callable = get_class( $function[0] ) . '->' . $function[1];
+				} else {
+					$callable = $function[0] . '::' . $function[1];
+				}
+			} elseif ( $function instanceof \Closure ) {
+				$callable = 'Closure';
+			} elseif ( is_string( $function ) ) {
+				$callable = $function;
+			} else {
+				$callable = var_export( $function, true );
+			}
+
+			$result[] = [
+				'priority'      => (int) $priority,
+				'callable'      => $callable,
+				'accepted_args' => $accepted_args,
+				#'raw'           => $function,
+			];
+		}
+	}
+
+	return $result;
+}

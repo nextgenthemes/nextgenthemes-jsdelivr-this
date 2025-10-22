@@ -60,14 +60,3 @@ const ALLOWED_HTML = array(
 	'pre'    => array(),
 	'div'    => array( 'class' => true ),
 );
-
-if ( defined( 'WP_INSTALLING' ) && WP_INSTALLING ) {
-	return;
-}
-
-if ( ! defined( 'ABSPATH' ) ) {
-	return; // no exit for use in build script
-}
-
-require_once __DIR__ . '/vendor/autoload_packages.php';
-require_once __DIR__ . '/php/init.php';
