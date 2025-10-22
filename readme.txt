@@ -13,7 +13,7 @@ Free CDN for for all assets from wordpress.org Github and NPM.
 
 == Changelog ==
 
-= 2025-10-22 1.3.4 =
+= 2025-10-22 1.3.5 =
 * Fix: Script Modules not working correctly.
 * Improved: Unified URLs for WordPress assets, skip api calls for them.
 * Improved: Code Quality.
