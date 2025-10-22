@@ -44,7 +44,7 @@ function init(): void {
 
 	add_action( 'admin_bar_menu', __NAMESPACE__ . '\add_item_to_admin_bar', 33 );
 
-	add_filter( 'init', __NAMESPACE__ . '\register_assets' );
+	add_action( 'init', __NAMESPACE__ . '\register_assets' );
 	add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\enqueue_assets' );
 	add_action( 'admin_enqueue_scripts', __NAMESPACE__ . '\enqueue_assets' );
 
@@ -215,38 +215,30 @@ function admin_bar_html(): void {
 	<?php
 }
 
+/**
+ * Filters the attributes of a script tag.
+ *
+ * @param array<string, string> $attributes The attributes of the script tag.
+ * @return array<string, string>            The filtered attributes.
+ */
 function filter_script_attributes( array $attributes ): array {
 
-	$wp_asset = detect_wp_asset( $attributes['src'] );
+	$detection_methods = [
+		fn() => detect_wp_asset( $attributes['src'] ),
+		fn() => detect_by_hash( $attributes['src'] ),
+		fn() => detect_plugin_asset( $attributes['src'], 'js' ),
+	];
 
-	if ( $wp_asset ) {
-		$attributes['src']         = $wp_asset['src'];
-		$attributes['integrity']   = $wp_asset['integrity'];
-		$attributes['crossorigin'] = 'anonymous';
+	foreach ( $detection_methods as $detect ) {
 
-		// we already got what we wanted, so exit early
-		return $attributes;
-	}
+		$new_attr = $detect();
 
-	$by_hash = detect_by_hash( $attributes['src'] );
-
-	if ( $by_hash ) {
-		$attributes['src']         = $by_hash['src'];
-		$attributes['integrity']   = $by_hash['integrity'];
-		$attributes['crossorigin'] = 'anonymous';
-
-		// we already got what we wanted, so exit early
-		return $attributes;
-	}
-
-	$by_plugin = detect_plugin_asset( $attributes['src'], 'js' );
-
-	if ( $by_plugin ) {
-		$attributes['src']         = $by_plugin['src'];
-		$attributes['integrity']   = $by_plugin['integrity'];
-		$attributes['crossorigin'] = 'anonymous';
-
-		return $attributes;
+		if ( $new_attr ) {
+			$attributes['src']         = $new_attr['src'];
+			$attributes['integrity']   = $new_attr['integrity'];
+			$attributes['crossorigin'] = 'anonymous';
+			break;
+		}
 	}
 
 	return $attributes;
@@ -265,31 +257,22 @@ function filter_link_tags( string $html ): string {
 			continue;
 		}
 
-		$wp_asset = detect_wp_asset( $href );
+		$detection_methods = [
+			fn() => detect_wp_asset( $href ),
+			fn() => detect_by_hash( $href ),
+			fn() => detect_plugin_asset( $href, 'css' ),
+		];
 
-		if ( $wp_asset ) {
-			$p->set_attribute( 'href', $wp_asset['src'] );
-			$p->set_attribute( 'integrity', $wp_asset['integrity'] );
-			$p->set_attribute( 'crossorigin', 'anonymous' );
-			continue;
-		}
+		foreach ( $detection_methods as $detect ) {
 
-		$by_hash = detect_by_hash( $href );
+			$new_attr = $detect();
 
-		if ( $by_hash ) {
-			$p->set_attribute( 'href', $by_hash['src'] );
-			$p->set_attribute( 'integrity', $by_hash['integrity'] );
-			$p->set_attribute( 'crossorigin', 'anonymous' );
-			continue;
-		}
-
-		$by_plugin = detect_plugin_asset( $href, 'css' );
-
-		if ( $by_plugin ) {
-			$p->set_attribute( 'href', $by_plugin['src'] );
-			$p->set_attribute( 'integrity', $by_plugin['integrity'] );
-			$p->set_attribute( 'crossorigin', 'anonymous' );
-			continue;
+			if ( $new_attr ) {
+				$p->set_attribute( 'href', $new_attr['src'] );
+				$p->set_attribute( 'integrity', $new_attr['integrity'] );
+				$p->set_attribute( 'crossorigin', 'anonymous' );
+				break;
+			}
 		}
 	}
 
@@ -330,10 +313,10 @@ function get_plugin_dir_file( string $plugin_slug ): ?string {
  * #1 For wp.org assets the src URL must have `/plugins/plugin-slug/` in them and end with `.js` or `.css` (excluding cash busting `?ver=1.2.3`).
  * #2 wp.org assets need to have its current version published as a tag on the wp.org plugins SVN, `trunk` will not work.
  *
- * @param string $src     The src to detect.
- * @param string $extension The extension of the file (css or js).
+ * @param string $src            The src to detect.
+ * @param string $extension      The extension of the file (css or js).
  *
- * @return array The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
+ * @return array<string, string> The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
  */
 function detect_plugin_asset( string $src, string $extension ): array {
 
@@ -405,25 +388,20 @@ function integrity_for_src( string $src ): ?string {
 /**
  * Assert that the current WordPress installation is a stable release.
  *
- * @throws RuntimeException If the version string contains a pre‑release identifier
- *                           such as “beta”, “alpha”, “rc”, or “dev”.
- *
- * @return string The full WordPress version (e.g. “6.5.2”).
+ * @return string|null Stable WordPress version. Null for beta... versions.
  */
 function get_stable_wp_version(): ?string {
 
-	// Pre‑release identifiers that make a build non‑stable.
-	$pre_release_patterns = [
-		'/beta/i',
-		'/alpha/i',
-		'/rc/i',
-		'/dev/i',
-	];
-
-	foreach ( $pre_release_patterns as $pattern ) {
-		if ( preg_match( $pattern, $GLOBALS['wp_version'] ) ) {
-			return null;
-		}
+	if ( str_contains_any(
+		$GLOBALS['wp_version'],
+		[
+			'beta',
+			'alpha',
+			'rc',
+			'dev',
+		]
+	) ) {
+		return null;
 	}
 
 	// No pre‑release strings found – the version is stable.
@@ -433,10 +411,9 @@ function get_stable_wp_version(): ?string {
 /**
  * Return the part of a URL that comes after the “/wp‑includes/” segment.
  *
- * @param string $url          Full URL (may contain query string or fragment).
- * @param string $segment      The segment to look for – defaults to “/wp‑includes/”.
+ * @param string $url  Full URL (may contain query string or fragment).
  *
- * @return string Empty string if the segment is not present,
+ * @return string|null Empty string if the segment is not present,
  *                otherwise the path that follows the segment.
  */
 function get_wp_asset_path( string $url ): ?string {
@@ -458,18 +435,26 @@ function get_wp_asset_path( string $url ): ?string {
 	return null;
 }
 
+/**
+ * Detects if file can be served from CDN
+ *
+ * Given a <link href="..."> or <script src="..."> it detects CDN files
+ *
+ * @param string $src The src to detect.
+ *
+ * @return array{src: string, integrity: string}|array{}
+ */
 function detect_wp_asset( string $src ): array {
 
 	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ||
-		! str_contains( $src, '/wp-includes/' ) ||
-		! str_contains( $src, '/wp-admin/' )
+		! str_contains_any( $src, [ '/wp-includes/', '/wp-admin/' ] )
 	) {
 		return array();
 	}
 
 	$wp_version = get_stable_wp_version();
 
-	if ( $wp_version ) {
+	if ( ! $wp_version ) {
 		return array();
 	}
 
@@ -483,18 +468,15 @@ function detect_wp_asset( string $src ): array {
 
 	$cdn_file       = 'https://cdn.jsdelivr.net/gh/WordPress/WordPress@' . $wp_version . $wp_asset_path;
 	$transient_name = shorten_transient_name( 'ngt-jsd_' . $cdn_file );
+	$data           = get_transient( $transient_name );
 
-	$data = get_transient( $transient_name );
-
-	if ( false === $data && ! call_limit() ) {
+	if ( false === $data ) {
 
 		$data            = new \stdClass();
 		$data->integrity = integrity_for_src( $src );
 
 		set_transient( $transient_name, $data, YEAR_IN_SECONDS );
 	}
-
-	d( $data );
 
 	if ( ! empty( $data->integrity ) ) {
 		return [
@@ -540,8 +522,6 @@ function fetch_and_cache_jsdelivr_data( string $file_path, string $transient_nam
 		]
 	);
 
-	d( $file_path, $api_data );
-
 	process_jsdelivr_api_response( $api_data, $result );
 	if ( property_exists( $result, 'file' ) && property_exists( $result, 'type' ) ) {
 		$result->integrity = gen_integrity( $file_content );
@@ -552,7 +532,7 @@ function fetch_and_cache_jsdelivr_data( string $file_path, string $transient_nam
 }
 
 /**
- * @param array|WP_Error $api_data
+ * @param array<string, mixed>|\WP_Error $api_data
  */
 function process_jsdelivr_api_response( $api_data, object &$result ): void {
 	if ( is_wp_error( $api_data ) ) {
@@ -588,12 +568,21 @@ function cache_jsdelivr_api_result( string $transient_name, object $result ): vo
 	set_transient( $transient_name, $result, wp_rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 2 ) );
 }
 
+/**
+ * Detects if file can be served from CDN
+ *
+ * Given a <link href="..."> or <script src="..."> it detects CDN files
+ *
+ * @param string $src The src to detect.
+ * @return array{src: string, integrity: string}|array{} The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
+ */
 function detect_by_hash( string $src ): array {
 
 	if ( str_starts_with( $src, 'https://cdn.jsdelivr.net' ) ) {
 		return array();
 	}
 
+	$data = new \stdClass();
 	$path = path_from_url( $src );
 
 	if ( $path ) {
@@ -654,28 +643,58 @@ function gen_integrity( string $input ): string {
 }
 
 /**
- * Retrieves the file path for a given URL, relative to the WordPress root directory.
+ * Convert a registered/enqueued script URL to a filesystem path.
  *
- * First checks if the file exists in the WordPress root directory, and if not, then
- * checks the parent directory of the WordPress root directory.
- *
- * @param string $url The URL to retrieve the file path for.
- * return string|null The file path if it exists, or null otherwise.
+ * @param string $script_url The script URL (absolute).
+ * @return string|null       Filesystem path on success, null if not resolvable.
  */
-function path_from_url( string $url ): ?string {
-	$path = parse_url( $url, PHP_URL_PATH );
+function path_from_url( string $script_url ): ?string {
 
-	if ( null === $path || '' === $path ) {
+	// Extract the URL path (no normalization)
+	$script_path = parse_url( $script_url, PHP_URL_PATH );
+	if ( ! $script_path ) {
 		return null;
 	}
 
-	$file     = rtrim( ABSPATH, '/' ) . $path;
-	$file_alt = rtrim( dirname( ABSPATH ), '/' ) . $path;
+	// Static cache for mappings
+	static $mappings = null;
+	if ( null === $mappings ) {
+		// Define raw mappings
+		$raw_mappings = [
+			content_url()        => WP_CONTENT_DIR,
+			plugins_url()        => WP_PLUGIN_DIR,
+			WPMU_PLUGIN_URL      => WPMU_PLUGIN_DIR, // @phpstan-ignore-line
+			get_theme_file_uri() => get_theme_root() . '/' . wp_get_theme()->get_stylesheet(),
+			site_url()           => ABSPATH,
+		];
 
-	if ( is_file( $file ) ) {
-		return $file;
-	} elseif ( is_file( $file_alt ) ) {
-		return $file_alt;
+		// Prepare mappings: overwrite keys with parsed URL paths and values with normalized filesystem paths
+		$mappings = [];
+		foreach ( $raw_mappings as $url => $fs_path ) {
+			$url_path = parse_url( $url, PHP_URL_PATH );
+
+			if ( null === $url_path ) {
+				$url_path = '';
+			} elseif ( false === $url_path ) {
+				wp_trigger_error( __FUNCTION__, 'parse_url error' );
+				continue;
+			}
+
+			$mappings[ $url_path ] = wp_normalize_path( $fs_path );
+		}
+	}
+
+	// Find matching base path
+	foreach ( $mappings as $url_base => $fs_base ) {
+		if ( str_starts_with( $script_path, $url_base ) ) {
+			$relative = ltrim( substr( $script_path, strlen( $url_base ) ), '/' );
+			$fs_path  = wp_normalize_path( $fs_base . '/' . $relative );
+
+			// Verify the file exists
+			if ( file_exists( $fs_path ) ) {
+				return $fs_path;
+			}
+		}
 	}
 
 	return null;
@@ -697,6 +716,10 @@ function get_plugin_version( string $plugin_file ): string {
  */
 function call_limit(): bool {
 
+	if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+		return false;
+	}
+
 	static $limit = 2;
 
 	if ( 0 === $limit ) {
@@ -705,5 +728,19 @@ function call_limit(): bool {
 
 	--$limit;
 
+	return false;
+}
+
+/**
+ * Return true if any needle is present in the haystack.
+ *
+ * @param string[] $needles
+ */
+function str_contains_any( string $haystack, array $needles ): bool {
+	foreach ( $needles as $needle ) {
+		if ( '' !== $needle && str_contains( $haystack, $needle ) ) {
+			return true;
+		}
+	}
 	return false;
 }
