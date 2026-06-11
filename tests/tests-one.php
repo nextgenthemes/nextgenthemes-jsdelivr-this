@@ -247,15 +247,17 @@ class Test_WP_Enqueue_Scripts extends WP_UnitTestCase {
 			$this->fail( $e->getMessage() );
 		}
 
+		global $wp_version;
+
 		$this->assertArrayHasKey( 'imports', $decoded, 'Import map should have imports array.' );
 		$this->assertArrayHasKey( 'integrity', $decoded, 'Import map should have integrity array.' );
 		$this->assertEquals(
-			'https://cdn.jsdelivr.net/gh/WordPress/WordPress@6.8.2/wp-includes/js/dist/script-modules/interactivity/index.min.js',
+			'https://cdn.jsdelivr.net/gh/WordPress/WordPress@' . $wp_version . '/wp-includes/js/dist/script-modules/interactivity/index.min.js',
 			$decoded['imports']['@wordpress/interactivity'],
 			'interactivity src is CDN.'
 		);
 		$this->assertArrayHasKey(
-			'https://cdn.jsdelivr.net/gh/WordPress/WordPress@6.8.2/wp-includes/js/dist/script-modules/interactivity/index.min.js',
+			'https://cdn.jsdelivr.net/gh/WordPress/WordPress@' . $wp_version . '/wp-includes/js/dist/script-modules/interactivity/index.min.js',
 			$decoded['integrity'],
 			'interactivity src not in integrity.'
 		);
