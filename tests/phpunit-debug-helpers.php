@@ -62,8 +62,7 @@ function rm_logfile( string $file ): void {
  * @return array<int, array{
  *     priority: int,
  *     callable: string,
- *     accepted_args: int|null,
- *     raw: mixed
+ *     accepted_args: int|null
  * }> Array of callbacks grouped by numeric index.
  */
 function get_hooked_callbacks( string $hook_name = 'wp_head' ): array {
