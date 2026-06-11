@@ -15,12 +15,6 @@ declare(strict_types = 1);
  */
 function debug( ...$args ): void {
 
-	// if ( is_string( $value )  ) {
-	//  ob_start();
-	//  var_dump( $value );
-	//  $value = ob_get_clean();
-	// }
-
 	foreach ( $args as $value ) {
 		ob_start();
 		var_dump( $value );
