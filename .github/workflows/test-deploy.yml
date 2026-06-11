@@ -15,7 +15,7 @@ jobs:
         id: get
         run: >-
           php --run "echo 'ver=' .
-          json_decode( file_get_contents( 'https://api.wordpress.org/core/version-check/1.7/?version=6.8&channel=beta' ) )->offers[0]->version;"
+          json_decode( file_get_contents( 'https://api.wordpress.org/core/version-check/1.7/?version=7.0&channel=beta' ) )->offers[0]->version;"
           >> "$GITHUB_OUTPUT"
       - name: Echo latest WP version (including beta releases)
         run: echo ${{ steps.get.outputs.ver }}
@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         php: [ '7.4', '8.4' ] # https://www.php.net/supported-versions
-        wordpress: [ '6.5', "${{ needs.beta.outputs.ver }}" ] # https://wordpress.org/download/releases/
+        wordpress: [ "${{ needs.beta.outputs.ver }}" ] # https://wordpress.org/download/releases/
     services:
       mysql:
         image: mariadb:10.11
