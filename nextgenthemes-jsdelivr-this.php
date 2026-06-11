@@ -51,6 +51,8 @@ function init(): void {
 	add_action( 'admin_footer', __NAMESPACE__ . '\admin_bar_html' );
 	add_action( 'wp_footer', __NAMESPACE__ . '\admin_bar_html' );
 
+	add_filter( 'wp_resource_hints', __NAMESPACE__ . '\optimize_jsdelivr_hints', 10, 2 );
+
 	add_filter(
 		'plugin_row_meta',
 		function ( array $links, string $file ): array {
@@ -698,6 +700,37 @@ function path_from_url( string $script_url ): ?string {
 	}
 
 	return null;
+}
+
+/**
+ * Remove auto dns‑prefetch hints for jsdelivr.net and add a preconnect hint.
+ *
+ * @param array  $hints         Existing hints.
+ * @param string $relation_type The relation type being processed ('dns-prefetch' or 'preconnect').
+ *
+ * @return array Modified hints.
+ */
+function optimize_jsdelivr_hints( array $hints, string $relation_type ): array {
+	// Remove any dns‑prefetch hint that contains "jsdelivr.net".
+	if ( 'dns-prefetch' === $relation_type ) {
+		$hints = array_filter(
+			$hints,
+			static function ( $hint ): bool {
+				// Ensure $hint is a string before checking.
+				return is_string( $hint ) && ! str_contains( $hint, 'jsdelivr.net' );
+			}
+		);
+	}
+
+	// Add a preconnect hint for the jsdelivr CDN.
+	if ( 'preconnect' === $relation_type ) {
+		$hints[] = [
+			'href'        => 'https://cdn.jsdelivr.net',
+			'crossorigin' => 'anonymous',
+		];
+	}
+
+	return $hints;
 }
 
 function get_plugin_version( string $plugin_file ): string {
