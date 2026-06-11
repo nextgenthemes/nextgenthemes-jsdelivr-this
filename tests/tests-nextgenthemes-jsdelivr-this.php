@@ -204,8 +204,14 @@ class Test_WP_Enqueue_Scripts extends WP_UnitTestCase {
 		do_action( 'wp_footer' );
 		$footer_html = ob_get_clean();
 
+		$link = $this->find_link_by_href( $head_html, 'https://cdn.jsdelivr.net' );
+
+		$this->assertInstanceOf( 'WP_HTML_Tag_Processor', $link );
+		$this->assertEquals( 'anonymous', $link->get_attribute( 'crossorigin' ) );
+		$this->assertEquals( 'preconnect', $link->get_attribute( 'rel' ) );
+
 		// Initialise the processor with the HTML string.
-		$p          = new WP_HTML_Tag_Processor( $footer_html );
+		$p          = new \WP_HTML_Tag_Processor( $footer_html );
 		$nav_attr   = array();
 		$import_map = array();
 
@@ -269,5 +275,27 @@ class Test_WP_Enqueue_Scripts extends WP_UnitTestCase {
 		//  $head_html,
 		//  'Footer HTML should contain the modulepreload link for interactivity script.'
 		// );
+	}
+
+	/**
+	 * Finds a <link> tag with a specific href value.
+	 *
+	 * @param string $html   The HTML content to parse.
+	 * @param string $href   The href value to search for.
+	 * @return WP_HTML_Tag_Processor|false The processor instance positioned at the tag, or false if not found.
+	 */
+	public static function find_link_by_href( string $html, string $href ) {
+		$p = new WP_HTML_Tag_Processor( $html );
+
+		// Loop through all LINK tags in the document
+		while ( $p->next_tag( array( 'tag_name' => 'LINK' ) ) ) {
+			// get_attribute() returns the value as a string, or null if missing.
+			// We use strict comparison to ensure an exact match.
+			if ( $href === $p->get_attribute( 'href' ) ) {
+				return $p;
+			}
+		}
+
+		return false;
 	}
 }
