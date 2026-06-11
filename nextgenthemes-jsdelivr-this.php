@@ -705,10 +705,10 @@ function path_from_url( string $script_url ): ?string {
 /**
  * Remove auto dns‑prefetch hints for jsdelivr.net and add a preconnect hint.
  *
- * @param array  $hints         Existing hints.
- * @param string $relation_type The relation type being processed ('dns-prefetch' or 'preconnect').
+ * @param list<string>|list<array<string,string>>  $hints          Existing hints.
+ * @param string                                   $relation_type  The relation type being processed ('dns-prefetch' or 'preconnect').
  *
- * @return array Modified hints.
+ * @return list<string>|list<array<string,string>>
  */
 function optimize_jsdelivr_hints( array $hints, string $relation_type ): array {
 	// Remove any dns‑prefetch hint that contains "jsdelivr.net".
