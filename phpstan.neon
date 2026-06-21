@@ -1,9 +1,8 @@
 includes:
-    - ../advanced-responsive-video-embedder/phpstan.neon
+	- ../advanced-responsive-video-embedder/phpstan.neon
 parameters:
 	paths:
 		- nextgenthemes-jsdelivr-this.php
 		- fn-remote-get.php
 		- tests
 		- bin
-
