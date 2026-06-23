@@ -1,6 +1,9 @@
 {
 	"name": "@nextgenthemes/nextgenthemes-jsdelivr-this",
 	"private": true,
+	"ngt-bind": {
+		"sym-plugin": true
+	},
 	"scripts": {
 		"build": "echo \"No build required\"",
 		"test": "phpunit"
