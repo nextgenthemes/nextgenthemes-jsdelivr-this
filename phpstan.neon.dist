@@ -1,5 +1,5 @@
 includes:
-	- ../advanced-responsive-video-embedder/phpstan.neon
+	- ../../phpstan.base.neon
 parameters:
 	paths:
 		- nextgenthemes-jsdelivr-this.php
