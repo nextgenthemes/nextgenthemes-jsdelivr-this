@@ -220,8 +220,8 @@ function admin_bar_html(): void {
 /**
  * Filters the attributes of a script tag.
  *
- * @param array<string, string> $attributes The attributes of the script tag.
- * @return array<string, string>            The filtered attributes.
+ * @param array<string,string> $attributes The attributes of the script tag.
+ * @return array<string,string>            The filtered attributes.
  */
 function filter_script_attributes( array $attributes ): array {
 
@@ -318,7 +318,7 @@ function get_plugin_dir_file( string $plugin_slug ): ?string {
  * @param string $src            The src to detect.
  * @param string $extension      The extension of the file (css or js).
  *
- * @return array<string, string> The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
+ * @return array<string,string> The array contains 'src' and 'integrity' if file and hash can be detected on the server and the file exists on the CDN. Empty array otherwise
  */
 function detect_plugin_asset( string $src, string $extension ): array {
 
@@ -534,7 +534,7 @@ function fetch_and_cache_jsdelivr_data( string $file_path, string $transient_nam
 }
 
 /**
- * @param array<string, mixed>|\WP_Error $api_data
+ * @param array<string,mixed>|\WP_Error $api_data
  */
 function process_jsdelivr_api_response( $api_data, object &$result ): void {
 	if ( is_wp_error( $api_data ) ) {

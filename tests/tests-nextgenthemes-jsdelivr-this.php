@@ -160,7 +160,7 @@ class Test_WP_Enqueue_Scripts extends WP_UnitTestCase {
 	/**
 	 * Verify that a script has the expected attributes.
 	 *
-	 * @param array<string, string> $attr Script attributes.
+	 * @param array<string,string> $attr Script attributes.
 	 */
 	private function verify_script_attr( array $attr ): void {
 
@@ -278,7 +278,7 @@ class Test_WP_Enqueue_Scripts extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Finds a <link> tag with a specific href value.
+	 * Finds a<link> tag with a specific href value.
 	 *
 	 * @param string $html   The HTML content to parse.
 	 * @param string $href   The href value to search for.
