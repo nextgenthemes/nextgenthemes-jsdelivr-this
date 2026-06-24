@@ -1,8 +1,6 @@
 # ── Misc ──
 .symlinks
 .ignore/
-ignore*
-#   Project-specific: *ignore/, src/
 
 # ── Dependencies ──
 node_modules/
@@ -13,9 +11,6 @@ build/
 dist/
 
 # ── PHP — general ──
-.phpunit.result.cache
-.php_cs.cache
-.php-cs-fixer.cache
 phpstan.neon 
 # Track phpstan.neon.dist instead
 
@@ -45,6 +40,8 @@ Thumbs.db
 # ── Editor / IDE ──
 .idea/
 .vscode/
+.komodotools
+*.komodoproject
 *.swp
 *.swo
 *~
