@@ -1,14 +1,15 @@
 {
 	"name": "@nextgenthemes/nextgenthemes-jsdelivr-this",
 	"private": true,
-	"ngt-bind": {
-		"sym-plugin": true
-	},
 	"scripts": {
 		"build": "echo \"No build required\"",
 		"test": "cd ../.. && phpunit --testsuite nextgenthemes-jsdelivr-this"
 	},
 	"devDependencies": {
 		"webpack-notifier": "^1.15.0"
-	}
+	},
+	"ngt-bind": {
+		"sym-plugin": true
+	},
+	"license": "GPL-3.0-only"
 }
